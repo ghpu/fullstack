@@ -1,0 +1,25 @@
+[package]
+name = "frontend"
+version = "0.1.0"
+authors = ["Ghislain PUTOIS <ghislain.putois@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = ""
+yew = ""
+common = { path="../common"}
+
+[profile.release]
+# less code to include into binary
+panic = 'abort' 
+# optimization over all codebase ( better optimization, slower build )
+codegen-units = 1
+# optimization for size ( more aggresive )
+opt-level = 'z' 
+# optimization for size 
+# opt-level = 's' 
+# link time optimization using using whole-program analysis
+lto = true
