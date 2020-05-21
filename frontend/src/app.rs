@@ -1,17 +1,16 @@
 use anyhow::Error;
-use serde_derive::{Deserialize, Serialize};
+use common::DataFromFile;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::console::ConsoleService;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 
 pub struct App {
-    name: String,
     link: ComponentLink<Self>,
     fetch_service: FetchService,
     console_service: ConsoleService,
     fetching: bool,
-    data: Option<u32>,
+    data: Option<String>,
     ft: Option<FetchTask>,
 }
 
@@ -20,11 +19,6 @@ pub enum Msg {
     FetchData,
     FetchReady(Result<DataFromFile, Error>),
     Ignore,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct DataFromFile {
-    value: u32,
 }
 
 impl Component for App {
@@ -38,7 +32,6 @@ impl Component for App {
             fetching: false,
             data: None,
             ft: None,
-            name: "toto".to_string(),
         }
     }
 
@@ -69,11 +62,11 @@ impl Component for App {
             }
             Msg::FetchReady(response) => {
                 self.fetching = false;
-                self.data = response.map(|data| data.value).ok();
+                self.data = response.map(|data| data.name).ok();
             }
             Msg::Ignore => {
                 self.fetching = false;
-                self.data = Some(13);
+                self.data = None;
             }
         }
         true
