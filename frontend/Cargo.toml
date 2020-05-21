@@ -11,6 +11,9 @@ crate-type = ["cdylib"]
 wasm-bindgen = ""
 yew = ""
 common = { path="../common"}
+anyhow = ""
+serde = ""
+serde_derive = ""
 
 [profile.release]
 # less code to include into binary
