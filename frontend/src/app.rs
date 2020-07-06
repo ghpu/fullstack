@@ -90,7 +90,7 @@ fn display_corpus(corpus: &common::Corpus) -> Html {
     html! {
         <table>
             <thead>
-            <tr><th>{"Reference"}</th><th>{"text"}</th><th>{"Count"}</th><th>{"Gold reference"}</th><th>{"Left analysis"}</th><th>{"Right analysis"}</th></tr>
+            <tr><th>{"Reference"}</th><th>{"Text"}</th><th>{"Count"}</th><th>{"Gold reference"}</th><th>{"Left analysis"}</th><th>{"Right analysis"}</th></tr>
             </thead>
         <tbody>
         {for corpus.cases.iter().map(|c| {display_case(&c)})}
@@ -103,9 +103,9 @@ fn display_corpus(corpus: &common::Corpus) -> Html {
 fn display_case(case: &common::Case) -> Html {
     html! {
             <tr>
-            <td>{&case.reference}</td>
+            <td style="text-align:center">{&case.reference}</td>
             <td>{&case.text}</td>
-            <td>{&case.count}</td>
+            <td style="text-align:center">{&case.count}</td>
             <td>{display_anntoations(&case.gold)}</td>
             <td>{display_anntoations(&case.left)}</td>
             <td>{display_anntoations(&case.right)}</td>
@@ -131,19 +131,20 @@ fn display_annotation(annot: &common::Annotation, index: usize) -> Html {
     let color = hash_it(annot) % 360;
 
     html! {
-        <table style={format!("background-color:hsl({},35%,50%);",color)}>
-            <thead>
+        <table style={format!("padding:0.5em; background-color:hsl({},35%,50%);",color)}>
+            /*<thead>
             <tr>
             <th>{format!("Intent {}" ,index)}</th>
             <th>{"Properties"}</th>
             </tr>
             </thead>
+            */
             <tbody>
             <tr style={format!("background-color:hsl({},70%,80%);",(hash_it(&annot.intent) % 360))}><td>{&annot.intent}</td>
             <td><table>
-            <thead>
+            /*<thead>
             <tr><th>{"key"}</th><th>{"value"}</th></tr>
-            </thead>
+            </thead>*/
             <tbody>
             {for annot.values.iter().map(|kv| html!{<tr style={format!("background-color:hsl({},70%,80%);",(hash_it("".to_string() +&kv.0 + &kv.1) % 360))} ><td>{&kv.0}</td><td>{&kv.1}</td></tr>})}
         </tbody>
