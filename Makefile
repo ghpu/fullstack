@@ -25,4 +25,4 @@ clean:
 	rm -rf pkg && \
 	rm -rf target && \
 	popd && \
-	rm -f out
+	rm -fr out
