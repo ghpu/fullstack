@@ -6,6 +6,27 @@ use std::ops::Range;
 use std::str::FromStr;
 use std::vec::Vec;
 
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Annotation {
+    pub intent: String,
+    pub values: Vec<(String,String)>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Case {
+    pub text: String,
+    pub gold: Vec<Annotation>,
+    pub a : Vec<Annotation>,
+    pub b: Vec<Annotation>
+}
+
+#[derive(Deserialize, Debug)]
+pub struct IntentMapping {
+    pub val: HashMap<String,String> // key=intent, value=domain
+}
+
+
 #[derive(Deserialize, Debug)]
 pub struct DataFromFile {
     pub name: String,

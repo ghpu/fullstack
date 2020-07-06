@@ -11,3 +11,4 @@ common = { path="../common" }
 actix-web = ""
 actix-rt =""
 actix-files = ""
+yew = ""

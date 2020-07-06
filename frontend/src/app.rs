@@ -1,5 +1,5 @@
 use anyhow::Error;
-use common::DataFromFile;
+use common::{Annotation,Case, IntentMapping};
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::console::ConsoleService;
@@ -10,14 +10,14 @@ pub struct App {
     fetch_service: FetchService,
     console_service: ConsoleService,
     fetching: bool,
-    data: Option<String>,
+    data: Option<Case>,
     ft: Option<FetchTask>,
 }
 
 pub enum Msg {
     NoOp,
     FetchData,
-    FetchReady(Result<DataFromFile, Error>),
+    FetchReady(Result<Case, Error>),
     Ignore,
 }
 
@@ -47,7 +47,7 @@ impl Component for App {
             Msg::FetchData => {
                 self.fetching = true;
                 let callback = self.link.callback(
-                    move |response: Response<Json<Result<DataFromFile, Error>>>| {
+                    move |response: Response<Json<Result<Case, Error>>>| {
                         let (meta, Json(data)) = response.into_parts();
                         if meta.status.is_success() {
                             Msg::FetchReady(data)
@@ -56,13 +56,13 @@ impl Component for App {
                         }
                     },
                 );
-                let request = Request::get("/data.json").body(Nothing).unwrap();
+                let request = Request::get("/data").body(Nothing).unwrap();
                 let task = self.fetch_service.fetch(request, callback).unwrap();
                 self.ft = Some(task);
             }
             Msg::FetchReady(response) => {
                 self.fetching = false;
-                self.data = response.map(|data| data.name).ok();
+                self.data = Some(response.unwrap());
             }
             Msg::Ignore => {
                 self.fetching = false;
@@ -74,7 +74,7 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-            <div>{ "Hello world!, " }{self.fetching}{ format!("{:?}", self.data) }</div>
+            <div><h1>{ "Hello world!, " }</h1><p>{"Loading in progress: "}{self.fetching}</p><p>{ format!("{:?}", self.data) }</p></div>
         }
     }
 
