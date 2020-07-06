@@ -1,10 +1,11 @@
-use std::collections::{HashMap,HashSet};
-use std::vec::Vec;
-use std::str::FromStr;
-use std::ops::Range;
 use bimap::BiMap;
-use std::num::NonZeroUsize;
 use serde_derive::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
+use std::num::NonZeroUsize;
+use std::ops::Range;
+use std::str::FromStr;
+use std::vec::Vec;
+
 #[derive(Deserialize, Debug)]
 pub struct DataFromFile {
     pub name: String,
@@ -18,96 +19,108 @@ pub struct DataFromFile {
 
 #[derive(Deserialize, Debug)]
 pub struct Graph {
-    names : BiMap<Path,Id>,
-    elements : HashMap<Id,Element>,
-    dependents: HashMap<Id,HashSet<Id>>, // Parent , List of depending nodes
+    names: BiMap<Path, Id>,
+    elements: HashMap<Id, Element>,
+    dependents: HashMap<Id, HashSet<Id>>, // Parent , List of depending nodes
 }
 
 impl Graph {
-
-fn new () -> Graph {
-    return Graph{names: BiMap::new(), elements : HashMap::new(), dependents : HashMap::new()}
-}
-
-fn contains_path(&self, path: &Path) -> bool {
-    self.names.contains_left(path)
-}
-
-fn contains_id(&self, id: &Id) -> bool {
-    self.names.contains_right(id)
-}
-
-fn add (&mut self, path: &Path, value: ElementValue) -> Result<Element, GraphError> {
-    if self.contains_path(path) {
-        return Err(GraphError::AlreadyExists);
-    }
-    let id = NonZeroUsize::new(self.names.len() + 1).unwrap(); // 1-based new id
-
-    let e = Element { id:id, value:value.clone()};
-    match self.elements.insert(id.clone(),e.clone()) {
-        None => (),
-        Some(e) => return Err(GraphError::Error),
+    fn new() -> Graph {
+        return Graph {
+            names: BiMap::new(),
+            elements: HashMap::new(),
+            dependents: HashMap::new(),
+        };
     }
 
-    match value {
-        ElementValue::LinkValue(l)  => { 
-            let mut dependents=self.dependents.remove(&id.clone()).unwrap_or(HashSet::new());
-            dependents.insert(l.from);
-            dependents.insert(l.to);
-            self.dependents.insert(id.clone(),dependents);
+    fn contains_path(&self, path: &Path) -> bool {
+        self.names.contains_left(path)
+    }
+
+    fn contains_id(&self, id: &Id) -> bool {
+        self.names.contains_right(id)
+    }
+
+    fn add(&mut self, path: &Path, value: ElementValue) -> Result<Element, GraphError> {
+        if self.contains_path(path) {
+            return Err(GraphError::AlreadyExists);
         }
-        _ => ()
+        let id = NonZeroUsize::new(self.names.len() + 1).unwrap(); // 1-based new id
 
+        let e = Element {
+            id: id,
+            value: value.clone(),
+        };
+        match self.elements.insert(id.clone(), e.clone()) {
+            None => (),
+            Some(e) => return Err(GraphError::Error),
+        }
+
+        match value {
+            ElementValue::LinkValue(l) => {
+                let mut dependents = self
+                    .dependents
+                    .remove(&id.clone())
+                    .unwrap_or(HashSet::new());
+                dependents.insert(l.from);
+                dependents.insert(l.to);
+                self.dependents.insert(id.clone(), dependents);
+            }
+            _ => (),
+        }
+
+        Ok(e)
     }
-
-    Ok(e)
 }
 
-}
+pub type Id = NonZeroUsize;
 
-pub type Id=NonZeroUsize;
+#[derive(PartialOrd, PartialEq, Eq, Clone, Hash, Debug, Deserialize)]
+pub struct Path(Vec<String>);
 
-#[derive(PartialOrd,PartialEq,Eq,Clone,Hash,Debug,Deserialize)]
-pub struct Path (Vec<String>);
-
-#[derive(PartialEq,Eq,Debug,Clone,Deserialize)]
-pub enum ElementValue{
+#[derive(PartialEq, Eq, Debug, Clone, Deserialize)]
+pub enum ElementValue {
     NodeValue(Node),
     LinkValue(Link),
 }
 
-#[derive(PartialEq,Eq,Debug,Clone,Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Deserialize)]
 pub enum Content {
     Local(String),
-    Remote(Id,Range<usize>),
+    Remote(Id, Range<usize>),
 }
 
-#[derive(PartialEq,Eq,Debug,Clone,Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Deserialize)]
 pub struct Node {
     content: Content,
     labels: HashSet<String>,
-    values: HashMap<String,String>,
-    comments: Vec<String>
+    values: HashMap<String, String>,
+    comments: Vec<String>,
 }
 
 impl Node {
     fn empty() -> Node {
-        Node{content:Content::Local("".to_string()),labels:HashSet::new(),values:HashMap::new(),comments:vec![]}
+        Node {
+            content: Content::Local("".to_string()),
+            labels: HashSet::new(),
+            values: HashMap::new(),
+            comments: vec![],
+        }
     }
 }
 
-#[derive(PartialEq,Eq,Debug,Clone,Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Deserialize)]
 pub struct Link {
     from: Id,
     to: Id,
     labels: HashSet<String>,
-    values: HashMap<String,String>,
-    comments: Vec<String>
+    values: HashMap<String, String>,
+    comments: Vec<String>,
 }
 
 /** There can be only one Element for a given id, so we instanciate special version of PartialEq
  * and Hash for Element */
-#[derive(Eq,Debug,Clone,Deserialize)]
+#[derive(Eq, Debug, Clone, Deserialize)]
 pub struct Element {
     id: Id,
     value: ElementValue,
@@ -137,14 +150,10 @@ impl std::hash::Hash for Element {
     }
 }
 
-#[derive(Debug,PartialEq,Eq)]
+#[derive(Debug, PartialEq, Eq)]
 enum GraphError {
     AlreadyExists,
     DontExist,
     HasParents,
     Error,
-}
-
-
-fn main() {
 }
