@@ -7,21 +7,30 @@ use std::str::FromStr;
 use std::vec::Vec;
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash)]
 pub struct Annotation {
     pub intent: String,
     pub values: Vec<(String,String)>
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash)]
 pub struct Case {
     pub text: String,
+    pub reference: usize,
+    pub count: usize,
     pub gold: Vec<Annotation>,
-    pub a : Vec<Annotation>,
-    pub b: Vec<Annotation>
+    pub left : Vec<Annotation>,
+    pub right: Vec<Annotation>
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Corpus {
+    pub intentMapping: IntentMapping,
+    pub cases: Vec<Case>,
+}
+
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct IntentMapping {
     pub val: HashMap<String,String> // key=intent, value=domain
 }
