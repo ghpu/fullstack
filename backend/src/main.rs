@@ -18,14 +18,15 @@ async fn get_data(_req: HttpRequest) -> impl Responder {
          ("scene name".to_string(),"Joan Baez".to_string())
     ]};
     let example_annot3 = common::Annotation{intent:"Movie_play".to_string(), values:vec![
+        ("any".to_string(),"John Baez".to_string()),
         ("artist".to_string(),"John Baez".to_string()),
          ("scene name".to_string(),"John Baez".to_string())
     ]};
 
 
-    let case = common::Case {reference:1, count:42,text:"Joue du Joan Baez".to_string(), gold:vec![example_annot.clone(), example_annot2.clone()], left:vec![example_annot.clone(), example_annot2.clone()], right:vec![example_annot.clone(),example_annot3.clone()]};
+    let case = common::Case {reference:1, count:42,text:"Joue du Joan Baez".to_string(), gold:vec![example_annot.clone()], left:vec![example_annot.clone()], right:vec![example_annot3.clone()]};
 
-    let corpus = common::Corpus{intentMapping:common::IntentMapping{val:HashMap::new()}, cases:vec![case]};
+    let corpus = common::Corpus{intentMapping:common::IntentMapping{val:HashMap::new()}, cases:vec![case.clone(),case.clone(),case.clone(),case.clone()]};
     web::Json(corpus)
 }
 
