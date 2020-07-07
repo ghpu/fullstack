@@ -13,9 +13,9 @@ async fn get_data(_req: HttpRequest) -> impl Responder {
         ("artist".to_string(),"Joan Baez".to_string()),
          ("scene name".to_string(),"Joan Baez".to_string())
     ]};
-    let example_annot2 = common::Annotation{intent:"Movie_play".to_string(), values:vec![
-        ("artist".to_string(),"Joan Baez".to_string()),
-         ("scene name".to_string(),"Joan Baez".to_string())
+    let example_annot2 = common::Annotation{intent:"Music_play".to_string(), values:vec![
+        ("artist".to_string(),"John Baez".to_string()),
+         ("scene name".to_string(),"John Baez".to_string())
     ]};
     let example_annot3 = common::Annotation{intent:"Movie_play".to_string(), values:vec![
         ("any".to_string(),"John Baez".to_string()),
@@ -24,7 +24,7 @@ async fn get_data(_req: HttpRequest) -> impl Responder {
     ]};
 
 
-    let case = common::Case {reference:1, count:42,text:"Joue du Joan Baez".to_string(), gold:vec![example_annot.clone()], left:vec![example_annot.clone()], right:vec![example_annot3.clone()]};
+    let case = common::Case {reference:1, count:42,text:"Joue du Joan Baez".to_string(), gold:vec![example_annot.clone()], left:vec![example_annot2.clone()], right:vec![example_annot3.clone()]};
 
     let corpus = common::Corpus{intentMapping:common::IntentMapping{val:[("Music_play".to_string(),"Music".to_string()),("Movie_play".to_string(),"Television".to_string())].iter().cloned().collect()}, cases:vec![case.clone(),case.clone(),case.clone(),case.clone()]};
     web::Json(corpus)

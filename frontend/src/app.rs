@@ -90,7 +90,9 @@ fn display_corpus(corpus: &common::Corpus) -> Html {
     html! {
         <table style="border-collapse:collapse;">
             <thead>
-            <tr style="background-color:lightgrey;"><th colspan="6">{"Corpus details"}</th></tr>
+            <tr style="background-color:lightgrey;"><th colspan="6">{format!("{} sentences ({} distinct)",
+    corpus.cases.iter().map(|c| {c.count}).sum::<usize>(),
+            corpus.cases.len() )}</th></tr>
             <tr style="background-color:lightgrey;"><th>{"ID"}</th><th>{"Text"}</th><th>{"Count"}</th><th>{"Gold reference"}</th><th>{"Left analysis"}</th><th>{"Right analysis"}</th></tr>
             </thead>
         <tbody>
@@ -107,17 +109,17 @@ fn display_case(case: &common::Case, corpus: &common::Corpus) -> Html {
             <td style="text-align:center">{&case.reference}</td>
             <td>{&case.text}</td>
             <td style="text-align:center">{&case.count}</td>
-            <td>{display_annotations(&case.gold, &corpus)}</td>
-            <td>{display_annotations(&case.left, &corpus)}</td>
-            <td>{display_annotations(&case.right, &corpus)}</td>
+            <td height="100%">{display_annotations(&case.gold, &corpus)}</td>
+            <td height="100%">{display_annotations(&case.left, &corpus)}</td>
+            <td height="100%">{display_annotations(&case.right, &corpus)}</td>
             </tr>
     }
 }
 
 fn display_annotations(annots: &Vec<common::Annotation>, corpus: &common::Corpus) -> Html {
     html! {
-        <table style="border-collapse:collapse">
-        <tr><td>{for annots.iter().enumerate().map(|(i,annot)| {display_annotation(&annot, i, corpus)})}</td></tr>
+        <table style="border-collapse:collapse" height="100%">
+        <tr><td height="100%">{for annots.iter().enumerate().map(|(i,annot)| {display_annotation(&annot, i, corpus)})}</td></tr>
         </table>
     }
 }
@@ -134,7 +136,7 @@ fn display_annotation(annot: &common::Annotation, index: usize, corpus: &common:
     let domain =corpus.intentMapping.val.get(&annot.intent).unwrap_or(&empty) ;
 
     html! {
-        <table style={format!("border-collapse:separate; padding:0.2em; background-color:hsl({},35%,50%);",color)}>
+        <table style={format!("border-collapse:separate; padding:0.2em; background-color:hsl({},35%,50%);",color)} height="100%">
             /*<thead>
             <tr>
             <th>{format!("Intent {}" ,index)}</th>
@@ -144,12 +146,13 @@ fn display_annotation(annot: &common::Annotation, index: usize, corpus: &common:
             */
             <tbody>
             <tr ><td style={format!("background-color:hsl({},35%,50%);",color)}>
-            <table style="border-collapse:collapse">
-            <tr style={format!("background-color:hsl({},70%,80%);",(hash_it(&domain) % 360))}><td style="padding:0.25em;">{domain}</td></tr>
-            <tr style={format!("background-color:hsl({},70%,80%);",(hash_it(&annot.intent) % 360))}><td style="padding:0.25em;">{&annot.intent}</td></tr>
+            <table style={format!("border-collapse:collapse; padding:0.2em; background-color:hsl({},35%,50%);",color)} height="100%">
+            <tr style={format!("text-align:center; background-color:hsl({},70%,80%);",(hash_it(&domain) % 360))}><td style="padding:0.25em;">{domain}</td></tr>
+            <tr style={format!("text-align:center; background-color:hsl({},70%,80%);",(hash_it(&annot.intent) % 360))}><td style="padding:0.25em;">{&annot.intent}</td></tr>
             </table>
         </td>
-            <td><table style="border-collapse:collapse">
+            <td style={format!("border-collapse:collapse; padding:0.2em; background-color:hsl({},35%,50%);",color)}>
+            <table style="border-collapse:collapse" >
             /*<thead>
             <tr><th>{"key"}</th><th>{"value"}</th></tr>
             </thead>*/
