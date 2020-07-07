@@ -109,17 +109,17 @@ fn display_case(case: &common::Case, corpus: &common::Corpus) -> Html {
             <td style="text-align:center">{&case.reference}</td>
             <td>{&case.text}</td>
             <td style="text-align:center">{&case.count}</td>
-            <td height="100%">{display_annotations(&case.gold, &corpus)}</td>
-            <td height="100%">{display_annotations(&case.left, &corpus)}</td>
-            <td height="100%">{display_annotations(&case.right, &corpus)}</td>
+            <td>{display_annotations(&case.gold, &corpus)}</td>
+            <td>{display_annotations(&case.left, &corpus)}</td>
+            <td>{display_annotations(&case.right, &corpus)}</td>
             </tr>
     }
 }
 
 fn display_annotations(annots: &Vec<common::Annotation>, corpus: &common::Corpus) -> Html {
     html! {
-        <table style="border-collapse:collapse" height="100%">
-        <tr><td height="100%">{for annots.iter().enumerate().map(|(i,annot)| {display_annotation(&annot, i, corpus)})}</td></tr>
+        <table style="border-collapse:collapse">
+        {for annots.iter().enumerate().map(|(i,annot)| html! {<tr><td> {display_annotation(&annot, i, corpus)}</td></tr> })}
         </table>
     }
 }
@@ -136,7 +136,7 @@ fn display_annotation(annot: &common::Annotation, index: usize, corpus: &common:
     let domain =corpus.intentMapping.val.get(&annot.intent).unwrap_or(&empty) ;
 
     html! {
-        <table style={format!("border-collapse:separate; padding:0.2em; background-color:hsl({},35%,50%);",color)} height="100%">
+        <table style={format!("border-collapse:separate; padding:0.2em; background-color:hsl({},35%,50%);",color)}>
             /*<thead>
             <tr>
             <th>{format!("Intent {}" ,index)}</th>
@@ -146,7 +146,7 @@ fn display_annotation(annot: &common::Annotation, index: usize, corpus: &common:
             */
             <tbody>
             <tr ><td style={format!("background-color:hsl({},35%,50%);",color)}>
-            <table style={format!("border-collapse:collapse; padding:0.2em; background-color:hsl({},35%,50%);",color)} height="100%">
+            <table style={format!("border-collapse:collapse; padding:0.2em; background-color:hsl({},35%,50%);",color)} >
             <tr style={format!("text-align:center; background-color:hsl({},70%,80%);",(hash_it(&domain) % 360))}><td style="padding:0.25em;">{domain}</td></tr>
             <tr style={format!("text-align:center; background-color:hsl({},70%,80%);",(hash_it(&annot.intent) % 360))}><td style="padding:0.25em;">{&annot.intent}</td></tr>
             </table>
