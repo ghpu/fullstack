@@ -76,7 +76,7 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-            <div><h1>{ "Hello world! "}</h1><p>{"Loading in progress: "}{self.fetching}</p><p>{ if let Some(d) = &self.data { display_corpus(&d)} else {html!{}}}</p></div>
+            <div><h1>{ "Hello world! "}</h1><p>{"Loading in progress: "}{self.fetching}</p><p>{ if let Some(d) = &self.data { d.display()} else {html!{}}}</p></div>
         }
     }
 
@@ -85,55 +85,59 @@ impl Component for App {
     }
 }
 
+pub trait CorpusDisplay {
+    fn display(&self) -> Html;
+    fn display_case(&self, case: &common::Case) -> Html;
+    fn display_annotations(&self, annots: &Vec<common::Annotation>) -> Html;
+    fn display_annotation(&self, annot: &common::Annotation, index: usize) -> Html;
 
-fn display_corpus(corpus: &common::Corpus) -> Html {
+}
+
+impl CorpusDisplay for common::Corpus {
+    fn display(&self) -> Html {
     html! {
         <table style="border-collapse:collapse;">
             <thead>
             <tr style="background-color:lightgrey;"><th colspan="6">{format!("{} sentences ({} distinct)",
-    corpus.cases.iter().map(|c| {c.count}).sum::<usize>(),
-            corpus.cases.len() )}</th></tr>
+    self.cases.iter().map(|c| {c.count}).sum::<usize>(),
+            self.cases.len() )}</th></tr>
             <tr style="background-color:lightgrey;"><th>{"ID"}</th><th>{"Text"}</th><th>{"Count"}</th><th>{"Gold reference"}</th><th>{"Left analysis"}</th><th>{"Right analysis"}</th></tr>
             </thead>
         <tbody>
-        {for corpus.cases.iter().map(|c| {display_case(&c, &corpus)})}
+        {for self.cases.iter().map(|c| {self.display_case(&c)})}
             </tbody>
         </table>
 
     }
-}
 
-fn display_case(case: &common::Case, corpus: &common::Corpus) -> Html {
+    }
+
+fn display_case(&self, case: &common::Case) -> Html {
     html! {
             <tr style="border-bottom: 1px solid grey;">
             <td style="text-align:center">{&case.reference}</td>
             <td>{&case.text}</td>
             <td style="text-align:center">{&case.count}</td>
-            <td>{display_annotations(&case.gold, &corpus)}</td>
-            <td>{display_annotations(&case.left, &corpus)}</td>
-            <td>{display_annotations(&case.right, &corpus)}</td>
+            <td>{self.display_annotations(&case.gold)}</td>
+            <td>{self.display_annotations(&case.left)}</td>
+            <td>{self.display_annotations(&case.right)}</td>
             </tr>
     }
 }
 
-fn display_annotations(annots: &Vec<common::Annotation>, corpus: &common::Corpus) -> Html {
+fn display_annotations(&self, annots: &Vec<common::Annotation>) -> Html {
     html! {
         <table style="border-collapse:collapse">
-        {for annots.iter().enumerate().map(|(i,annot)| html! {<tr><td> {display_annotation(&annot, i, corpus)}</td></tr> })}
+        {for annots.iter().enumerate().map(|(i,annot)| html! {<tr><td> {self.display_annotation(&annot, i)}</td></tr> })}
         </table>
     }
 }
 
-fn hash_it<T:Hash>(t:T) -> u64 {
-    let mut s = std::collections::hash_map::DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish()
-}
 
-fn display_annotation(annot: &common::Annotation, index: usize, corpus: &common::Corpus) -> Html {
+fn display_annotation(&self, annot: &common::Annotation, index: usize) -> Html {
     let color = hash_it(annot) % 360;
     let empty = "".to_string();
-    let domain =corpus.intentMapping.val.get(&annot.intent).unwrap_or(&empty) ;
+    let domain =self.intentMapping.val.get(&annot.intent).unwrap_or(&empty) ;
 
     html! {
         <table style={format!("border-collapse:separate; padding:0.2em; background-color:hsl({},35%,50%);",color)}>
@@ -165,3 +169,10 @@ fn display_annotation(annot: &common::Annotation, index: usize, corpus: &common:
             </table>
     }
 }
+}
+fn hash_it<T:Hash>(t:T) -> u64 {
+    let mut s = std::collections::hash_map::DefaultHasher::new();
+    t.hash(&mut s);
+    s.finish()
+}
+
