@@ -134,7 +134,7 @@ fn display_annotation(annot: &common::Annotation, index: usize, corpus: &common:
     let domain =corpus.intentMapping.val.get(&annot.intent).unwrap_or(&empty) ;
 
     html! {
-        <table style={format!("border-collapse:separate; padding:0.5em; background-color:hsl({},35%,50%);",color)}>
+        <table style={format!("border-collapse:separate; padding:0.2em; background-color:hsl({},35%,50%);",color)}>
             /*<thead>
             <tr>
             <th>{format!("Intent {}" ,index)}</th>
@@ -143,10 +143,10 @@ fn display_annotation(annot: &common::Annotation, index: usize, corpus: &common:
             </thead>
             */
             <tbody>
-            <tr ><td style="padding: 0.25em">
+            <tr ><td>
             <table style="border-collapse:collapse">
-            <tr style={format!("background-color:hsl({},70%,80%);",(hash_it(&domain) % 360))}><td>{domain}</td></tr>
-            <tr style={format!("background-color:hsl({},70%,80%);",(hash_it(&annot.intent) % 360))}><td>{&annot.intent}</td></tr>
+            <tr style={format!("background-color:hsl({},70%,80%);",(hash_it(&domain) % 360))}><td style="padding:0.25em;">{domain}</td></tr>
+            <tr style={format!("background-color:hsl({},70%,80%);",(hash_it(&annot.intent) % 360))}><td style="padding:0.25em;">{&annot.intent}</td></tr>
             </table>
         </td>
             <td><table style="border-collapse:collapse">
