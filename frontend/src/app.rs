@@ -76,7 +76,7 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-            <div><h1>{ "Hello world!" }</h1><p>{"Loading in progress: "}{self.fetching}</p><p>{ if let Some(d) = &self.data { display_corpus(&d)} else {html!{}}}</p></div>
+            <div><h1>{ "Hello world! "}</h1><p>{"Loading in progress: "}{self.fetching}</p><p>{ if let Some(d) = &self.data { display_corpus(&d)} else {html!{}}}</p></div>
         }
     }
 
@@ -90,6 +90,7 @@ fn display_corpus(corpus: &common::Corpus) -> Html {
     html! {
         <table style="border-collapse:collapse;">
             <thead>
+            <tr style="background-color:lightgrey;"><th colspan="6">{"Corpus details"}</th></tr>
             <tr style="background-color:lightgrey;"><th>{"ID"}</th><th>{"Text"}</th><th>{"Count"}</th><th>{"Gold reference"}</th><th>{"Left analysis"}</th><th>{"Right analysis"}</th></tr>
             </thead>
         <tbody>
