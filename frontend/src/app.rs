@@ -143,7 +143,7 @@ fn display_annotation(annot: &common::Annotation, index: usize, corpus: &common:
             </thead>
             */
             <tbody>
-            <tr ><td>
+            <tr ><td style={format!("background-color:hsl({},35%,50%);",color)}>
             <table style="border-collapse:collapse">
             <tr style={format!("background-color:hsl({},70%,80%);",(hash_it(&domain) % 360))}><td style="padding:0.25em;">{domain}</td></tr>
             <tr style={format!("background-color:hsl({},70%,80%);",(hash_it(&annot.intent) % 360))}><td style="padding:0.25em;">{&annot.intent}</td></tr>
