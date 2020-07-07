@@ -36,6 +36,10 @@ pub struct IntentMapping {
 }
 
 
+
+/* Not use after this point */
+
+
 #[derive(Deserialize, Debug)]
 pub struct DataFromFile {
     pub name: String,

@@ -88,35 +88,35 @@ impl Component for App {
 
 fn display_corpus(corpus: &common::Corpus) -> Html {
     html! {
-        <table style="border-collapse:collapse">
+        <table style="border-collapse:collapse;">
             <thead>
-            <tr><th>{"ID"}</th><th>{"Text"}</th><th>{"Count"}</th><th>{"Gold reference"}</th><th>{"Left analysis"}</th><th>{"Right analysis"}</th></tr>
+            <tr style="background-color:lightgrey;"><th>{"ID"}</th><th>{"Text"}</th><th>{"Count"}</th><th>{"Gold reference"}</th><th>{"Left analysis"}</th><th>{"Right analysis"}</th></tr>
             </thead>
         <tbody>
-        {for corpus.cases.iter().map(|c| {display_case(&c)})}
+        {for corpus.cases.iter().map(|c| {display_case(&c, &corpus)})}
             </tbody>
         </table>
 
     }
 }
 
-fn display_case(case: &common::Case) -> Html {
+fn display_case(case: &common::Case, corpus: &common::Corpus) -> Html {
     html! {
-            <tr>
+            <tr style="border-bottom: 1px solid grey;">
             <td style="text-align:center">{&case.reference}</td>
             <td>{&case.text}</td>
             <td style="text-align:center">{&case.count}</td>
-            <td>{display_anntoations(&case.gold)}</td>
-            <td>{display_anntoations(&case.left)}</td>
-            <td>{display_anntoations(&case.right)}</td>
+            <td>{display_annotations(&case.gold, &corpus)}</td>
+            <td>{display_annotations(&case.left, &corpus)}</td>
+            <td>{display_annotations(&case.right, &corpus)}</td>
             </tr>
     }
 }
 
-fn display_anntoations(annots: &Vec<common::Annotation>) -> Html {
+fn display_annotations(annots: &Vec<common::Annotation>, corpus: &common::Corpus) -> Html {
     html! {
         <table style="border-collapse:collapse">
-        <tr><td>{for annots.iter().enumerate().map(|(i,annot)| {display_annotation(&annot, i)})}</td></tr>
+        <tr><td>{for annots.iter().enumerate().map(|(i,annot)| {display_annotation(&annot, i, corpus)})}</td></tr>
         </table>
     }
 }
@@ -127,8 +127,10 @@ fn hash_it<T:Hash>(t:T) -> u64 {
     s.finish()
 }
 
-fn display_annotation(annot: &common::Annotation, index: usize) -> Html {
+fn display_annotation(annot: &common::Annotation, index: usize, corpus: &common::Corpus) -> Html {
     let color = hash_it(annot) % 360;
+    let empty = "".to_string();
+    let domain =corpus.intentMapping.val.get(&annot.intent).unwrap_or(&empty) ;
 
     html! {
         <table style={format!("border-collapse:separate; padding:0.5em; background-color:hsl({},35%,50%);",color)}>
@@ -140,7 +142,12 @@ fn display_annotation(annot: &common::Annotation, index: usize) -> Html {
             </thead>
             */
             <tbody>
-            <tr style={format!("background-color:hsl({},70%,80%);",(hash_it(&annot.intent) % 360))}><td style="padding: 0.25em">{&annot.intent}</td>
+            <tr ><td style="padding: 0.25em">
+            <table style="border-collapse:collapse">
+            <tr style={format!("background-color:hsl({},70%,80%);",(hash_it(&domain) % 360))}><td>{domain}</td></tr>
+            <tr style={format!("background-color:hsl({},70%,80%);",(hash_it(&annot.intent) % 360))}><td>{&annot.intent}</td></tr>
+            </table>
+        </td>
             <td><table style="border-collapse:collapse">
             /*<thead>
             <tr><th>{"key"}</th><th>{"value"}</th></tr>
