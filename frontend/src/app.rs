@@ -21,6 +21,7 @@ pub enum Msg {
     FetchData,
     FetchReady(Result<Corpus, Error>),
     Ignore,
+    UpdateCurrentIndex(usize),
     UpdatePageSize(ChangeData),
 }
 
@@ -70,12 +71,15 @@ impl Component for App {
             Msg::Ignore => {
                 self.fetching = false;
             }
-            
+
             Msg::UpdatePageSize(cd) => {
                 if let ChangeData::Select(se) = cd {
-                self.table.page_size = se.value().parse::<usize>().unwrap()
+                    self.table.page_size = se.value().parse::<usize>().unwrap()
                 }
+            }
 
+            Msg::UpdateCurrentIndex(ci) => {
+                self.table.current_index=ci;
             }
         }
         true
@@ -103,6 +107,9 @@ struct TableDisplay {
 
 impl TableDisplay {
     fn display(&self) -> Html {
+        let current_cases = if self.corpus.cases.len()>0 
+        {&self.corpus.cases[self.current_index..std::cmp::min(self.corpus.cases.len()-1,self.current_index+self.page_size)]
+        } else {&self.corpus.cases};
         html! {
             <table style="border-collapse:collapse;">
                 <thead>
@@ -110,28 +117,39 @@ impl TableDisplay {
                 self.corpus.cases.iter().map(|c| {c.count}).sum::<usize>(),
                 self.corpus.cases.len() )}</th></tr>
                 {self.display_navbar()}
-                <tr style="background-color:lightgrey;"><th>{"ID"}</th><th>{"Text"}</th><th>{"Count"}</th><th>{"Gold reference"}</th><th>{"Left analysis"}</th><th>{"Right analysis"}</th></tr>
+            <tr style="background-color:lightgrey;"><th>{"ID"}</th><th>{"Text"}</th><th>{"Count"}</th><th>{"Gold reference"}</th><th>{"Left analysis"}</th><th>{"Right analysis"}</th></tr>
                 </thead>
                 <tbody>
-                {for self.corpus.cases.iter().map(|c| {self.display_case(&c)})}
+                {for current_cases.iter().map(|c| {self.display_case(&c)})}
             </tbody>
                 <tfoot>
                 {self.display_navbar()}
-                </tfoot>
+            </tfoot>
                 </table>
 
         }
     }
 
     fn display_navbar(&self) -> Html {
-        html! {
-        <tr style="background-color:lightgrey;"><th colspan="5">{format!("navigation bar : {} items per page", self.page_size)}</th><th>
-            <select value=self.page_size onchange=self.link_ref.callback(|c| {Msg::UpdatePageSize(c)})>
-            { for [10,25,50,100].iter().map( |v| {
-                html!{<option value=*v selected= self.page_size == *v  >{*v}</option>}
-                                                 })}
+        let nb_pages = self.corpus.cases.len() / self.page_size + 1;
+        let page_list = (0..nb_pages);
+        html! {<>
+            <tr style="background-color:lightgrey;"><th colspan="6">{format!("navigation bar : current pos : {}, {} pages, {} items per page", self.current_index, nb_pages, self.page_size)}
+                </th></tr>
+            <tr style="background-color:lightgrey;"><th colspan="5">{"goto page: "}
+            {for page_list.map(|i| {html!{
+                                             <span onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex(i)})
+                                                 >{i}</span>
+                                         }})}
+
+            </th><th>
+                <select value=self.page_size onchange=self.link_ref.callback(|c| {Msg::UpdatePageSize(c)})>
+                { for [2,10,25,50,100].iter().map( |v| {
+                                                         html!{<option value=*v selected= self.page_size == *v  >{*v}</option>}
+                                                     })}
             </select>
-            </th></tr>
+                </th></tr>
+                </>
         }
     }
 
