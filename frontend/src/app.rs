@@ -108,7 +108,7 @@ struct TableDisplay {
 impl TableDisplay {
     fn display(&self) -> Html {
         let current_cases = if self.corpus.cases.len()>0 
-        {&self.corpus.cases[self.current_index..std::cmp::min(self.corpus.cases.len()-1,self.current_index+self.page_size)]
+        {&self.corpus.cases[self.current_index..std::cmp::min(self.corpus.cases.len(),self.current_index+self.page_size)]
         } else {&self.corpus.cases};
         html! {
             <table style="border-collapse:collapse;">
@@ -131,24 +131,39 @@ impl TableDisplay {
     }
 
     fn display_navbar(&self) -> Html {
-        let nb_pages = self.corpus.cases.len() / self.page_size + 1;
-        let page_list = (0..nb_pages);
-        html! {<>
-            <tr style="background-color:lightgrey;"><th colspan="6">{format!("navigation bar : current pos : {}, {} pages, {} items per page", self.current_index, nb_pages, self.page_size)}
-                </th></tr>
-            <tr style="background-color:lightgrey;"><th colspan="5">{"goto page: "}
-            {for page_list.map(|i| {html!{
-                                             <span onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex(i)})
-                                                 >{i}</span>
-                                         }})}
+        let nb_pages = (self.corpus.cases.len()+self.page_size-1) / self.page_size;
+        let mut page_list = vec![];
+        let page_size = self.page_size;
 
-            </th><th>
-                <select value=self.page_size onchange=self.link_ref.callback(|c| {Msg::UpdatePageSize(c)})>
-                { for [2,10,25,50,100].iter().map( |v| {
+        let current_page = self.current_index / self.page_size + 1;
+
+
+        if current_page as isize -100 > 0 { page_list.push(current_page-100) };
+        if current_page as isize -10 > 0 { page_list.push(current_page-10) };
+        if current_page as isize -1 > 0 { page_list.push(current_page-1) };
+
+        if current_page+1 <= nb_pages { page_list.push(current_page+1) };
+        if current_page+10 <= nb_pages { page_list.push(current_page+10) };
+        if current_page+100 <= nb_pages { page_list.push(current_page+100) };
+
+        html! {<>
+            <tr style="background-color:lightgrey;"><th colspan="5">{format!("page {}/{}", current_page, nb_pages)}
+            </th>
+                <th>{"number per page : "}
+            <select value=self.page_size onchange=self.link_ref.callback(|c| {Msg::UpdatePageSize(c)})>
+            { for [1,2,10,25,50,100].iter().map( |v| {
                                                          html!{<option value=*v selected= self.page_size == *v  >{*v}</option>}
                                                      })}
             </select>
-                </th></tr>
+                </th>
+                </tr>
+                <tr style="background-color:lightgrey;"><th colspan="6">{"goto page : "}
+                {for page_list.iter().map(|&i| {html!{
+                                                         <span style="padding:1em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex((i-1) * page_size)})
+                                                             >{i}</span>
+                                                     }})}
+
+            </th></tr>
                 </>
         }
     }
