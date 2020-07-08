@@ -132,30 +132,37 @@ impl TableDisplay {
 
     fn display_navbar(&self) -> Html {
         let nb_pages = (self.corpus.cases.len()+self.page_size-1) / self.page_size;
-        let mut page_list = vec![];
+        let mut previous_page_list = vec![];
+        let mut next_page_list = vec![];
+
         let page_size = self.page_size;
 
         let current_page = self.current_index / self.page_size + 1;
 
 
-        if current_page as isize -100 > 0 { page_list.push(current_page-100) };
-        if current_page as isize -10 > 0 { page_list.push(current_page-10) };
-        if current_page as isize -5 > 0 { page_list.push(current_page-5) };
-        if current_page as isize -2 > 0 { page_list.push(current_page-2) };
-        if current_page as isize -1 > 0 { page_list.push(current_page-1) };
+        if current_page as isize -100 > 0 { previous_page_list.push(current_page-100) };
+        if current_page as isize -10 > 0 { previous_page_list.push(current_page-10) };
+        if current_page as isize -5 > 0 { previous_page_list.push(current_page-5) };
+        if current_page as isize -2 > 0 { previous_page_list.push(current_page-2) };
+        if current_page as isize -1 > 0 { previous_page_list.push(current_page-1) };
 
-        if current_page+1 <= nb_pages { page_list.push(current_page+1) };
-        if current_page+2 <= nb_pages { page_list.push(current_page+2) };
-        if current_page+5 <= nb_pages { page_list.push(current_page+5) };
-        if current_page+10 <= nb_pages { page_list.push(current_page+10) };
-        if current_page+100 <= nb_pages { page_list.push(current_page+100) };
+        if current_page+1 <= nb_pages { next_page_list.push(current_page+1) };
+        if current_page+2 <= nb_pages { next_page_list.push(current_page+2) };
+        if current_page+5 <= nb_pages { next_page_list.push(current_page+5) };
+        if current_page+10 <= nb_pages { next_page_list.push(current_page+10) };
+        if current_page+100 <= nb_pages { next_page_list.push(current_page+100) };
 
         html! {<>
-            <tr style="background-color:lightgrey;"><th colspan="5">{format!("page {}/{}", current_page, nb_pages)}
-            {if page_list.len() > 0 {", goto page : "} else {""}}
-                {for page_list.iter().map(|&i| {html!{
-                                                         <span style="padding:1em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex((i-1) * page_size)})
-                                                             >{i}</span>
+            <tr style="background-color:lightgrey;"><th colspan="5">
+                {for previous_page_list.iter().map(|&i| {html!{
+                                                         <button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex((i-1) * page_size)})
+                                                             >{i}</button>
+                                                     }})}
+            <span style="padding:0.3em;">{format!("page {}/{}", current_page, nb_pages)}</span>
+
+{for next_page_list.iter().map(|&i| {html!{
+                                                         <button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex((i-1) * page_size)})
+                                                             >{i}</button>
                                                      }})}
             </th>
                 <th>{"number per page : "}
