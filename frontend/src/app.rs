@@ -154,16 +154,16 @@ impl TableDisplay {
 
         html! {<>
             <tr style="background-color:lightgrey;"><th colspan="5">
-                {for previous_page_list.iter().map(|&i| {html!{
+                <span style="display:inline-block; width:30%">{for previous_page_list.iter().map(|&i| {html!{
                                                          <button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex((i-1) * page_size)})
                                                              >{i}</button>
-                                                     }})}
-            <span style="padding:0.3em;">{format!("page {}/{}", current_page, nb_pages)}</span>
+                                                     }})}</span>
+            <span style="display: inline-block; width:20%; padding:0.3em;">{format!("page {}/{}", current_page, nb_pages)}</span>
 
-{for next_page_list.iter().map(|&i| {html!{
+<span style="display:inline-block; width:30%">{for next_page_list.iter().map(|&i| {html!{
                                                          <button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex((i-1) * page_size)})
                                                              >{i}</button>
-                                                     }})}
+                                                     }})}</span>
             </th>
                 <th>{"number per page : "}
             <select value=self.page_size onchange=self.link_ref.callback(|c| {Msg::UpdatePageSize(c)})>

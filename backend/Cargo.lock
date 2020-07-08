@@ -369,6 +369,7 @@ dependencies = [
  "actix-rt",
  "actix-web",
  "common",
+ "serde_json",
  "yew",
 ]
 
