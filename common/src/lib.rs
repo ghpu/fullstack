@@ -35,7 +35,11 @@ pub struct IntentMapping {
     pub val: HashMap<String,String> // key=intent, value=domain
 }
 
-
+impl Corpus {
+    pub fn empty() -> Self {
+        Corpus{intentMapping: IntentMapping {val:HashMap::new()}, cases:vec![]}
+    }
+}
 
 /* Not use after this point */
 
