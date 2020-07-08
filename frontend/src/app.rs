@@ -140,14 +140,23 @@ impl TableDisplay {
 
         if current_page as isize -100 > 0 { page_list.push(current_page-100) };
         if current_page as isize -10 > 0 { page_list.push(current_page-10) };
+        if current_page as isize -5 > 0 { page_list.push(current_page-5) };
+        if current_page as isize -2 > 0 { page_list.push(current_page-2) };
         if current_page as isize -1 > 0 { page_list.push(current_page-1) };
 
         if current_page+1 <= nb_pages { page_list.push(current_page+1) };
+        if current_page+2 <= nb_pages { page_list.push(current_page+2) };
+        if current_page+5 <= nb_pages { page_list.push(current_page+5) };
         if current_page+10 <= nb_pages { page_list.push(current_page+10) };
         if current_page+100 <= nb_pages { page_list.push(current_page+100) };
 
         html! {<>
             <tr style="background-color:lightgrey;"><th colspan="5">{format!("page {}/{}", current_page, nb_pages)}
+            {if page_list.len() > 0 {", goto page : "} else {""}}
+                {for page_list.iter().map(|&i| {html!{
+                                                         <span style="padding:1em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex((i-1) * page_size)})
+                                                             >{i}</span>
+                                                     }})}
             </th>
                 <th>{"number per page : "}
             <select value=self.page_size onchange=self.link_ref.callback(|c| {Msg::UpdatePageSize(c)})>
@@ -157,13 +166,6 @@ impl TableDisplay {
             </select>
                 </th>
                 </tr>
-                <tr style="background-color:lightgrey;"><th colspan="6">{"goto page : "}
-                {for page_list.iter().map(|&i| {html!{
-                                                         <span style="padding:1em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex((i-1) * page_size)})
-                                                             >{i}</span>
-                                                     }})}
-
-            </th></tr>
                 </>
         }
     }
