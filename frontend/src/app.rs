@@ -113,9 +113,9 @@ impl TableDisplay {
         html! {
             <table style="border-collapse:collapse;">
                 <thead>
-                <tr style="background-color:lightgrey;"><th colspan="6">{format!("{} sentences ({} distinct)",
+                <tr style="background-color:lightgrey;"><th colspan="5">{format!("{} sentences ({} distinct)",
                 self.corpus.cases.iter().map(|c| {c.count}).sum::<usize>(),
-                self.corpus.cases.len() )}</th></tr>
+                self.corpus.cases.len() )}</th><th></th></tr>
                 {self.display_navbar()}
             <tr style="background-color:lightgrey;"><th>{"ID"}</th><th>{"Text"}</th><th>{"Count"}</th><th>{"Gold reference"}</th><th>{"Left analysis"}</th><th>{"Right analysis"}</th></tr>
                 </thead>
