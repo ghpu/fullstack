@@ -224,7 +224,6 @@ impl TableDisplay {
         html! {
             <table style="border-collapse:collapse;">
                 <thead>
-                <tr style="background-color:lightgrey;"><th colspan="5">{"Complete corpus : "}{self.count_sentences(&self.corpus.cases)}</th><th></th></tr>
                 {self.display_filterbar(&current_cases)}
                 {self.display_navbar(&current_cases)}
             <tr style="background-color:lightgrey;"><th>{self.display_header(TableField::ID)}</th><th>{self.display_header(TableField::Text)}</th><th>{self.display_header(TableField::Count)}</th><th>{self.display_header(TableField::Gold)}</th><th>{self.display_header(TableField::Left)}</th><th>{self.display_header(TableField::Right)}</th></tr>
@@ -242,7 +241,7 @@ impl TableDisplay {
 
     fn display_filterbar(&self, cases: &[common::Case]) -> Html {
         html!{
-            <tr style="background-color:lightgrey;"><th colspan="5">{"filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th><th colspan="1">{"filtered : "}{self.count_sentences(&cases)}</th></tr>
+            <tr style="background-color:lightgrey;"><th colspan="3">{"filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th><th colspan="3">{self.count_sentences(&cases)}</th></tr>
         }
     }
 
