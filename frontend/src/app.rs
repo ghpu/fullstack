@@ -27,10 +27,16 @@ struct TableDisplay {
     sort_criterion: (TableField,SortDirection),
     filter: Option<String>,
     debounce_handle: yew::services::timeout::TimeoutTask,
+    shown: ShownList
 }
 
+enum ShownList {
+    All,
+    GoldDistinct,
+    LeftRightDistinct
+}
 #[derive(Clone,Copy, PartialEq, Eq)]
-enum TableField {
+pub enum TableField {
     ID,
     Text,
     Count,
@@ -56,6 +62,7 @@ pub enum Msg {
     UpdateSort(TableField),
     UpdateFilter(String),
     DebouncedExecution(String),
+    UpdateShown(),
 }
 
 impl Component for App {
@@ -66,7 +73,7 @@ impl Component for App {
             link: link.clone(),
             fetching: false,
             ft: None,
-            table: TableDisplay{current_index: 0, page_size: 50, corpus: common::Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::Text, SortDirection::Decreasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp))},
+            table: TableDisplay{current_index: 0, page_size: 50, corpus: common::Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::Text, SortDirection::Decreasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), shown: ShownList::All},
         }
     }
 
@@ -78,6 +85,12 @@ impl Component for App {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
+            Msg::UpdateShown() => {
+                if let ShownList::All= self.table.shown {
+                    self.table.shown = ShownList::GoldDistinct;
+                } else if let ShownList::GoldDistinct = self.table.shown { self.table.shown = ShownList::LeftRightDistinct;}
+                else { self.table.shown = ShownList::All;}
+            }
             Msg::UpdateFilter(filter_string) => { 
                 self.table.debounce_handle = TimeoutService::spawn(Duration::from_millis(200), self.link.callback(move |_| Msg::DebouncedExecution(filter_string.clone()) ));
             }
@@ -138,9 +151,10 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-            <div><h1>{ "Hello world! "}</h1><p>{"Loading in progress: "}{self.fetching}</p><p>{  
-                self.table.display()
-            }</p></div>
+            <div><h1>{ "Case analysis "}</h1>{  
+                if self.fetching {html!{<p>{"Please wait, loading..."}</p>}} else {
+                self.table.display()}
+            }</div>
         }
     }
 
@@ -213,7 +227,7 @@ impl TableDisplay {
 
     fn display(&self) -> Html {
         let mut current_cases = self.corpus.cases.to_vec();
-        current_cases = current_cases.into_iter().filter(|x| self.filter_fn(x)).collect::<Vec<common::Case>>();
+        current_cases = current_cases.into_iter().filter(|x| self.filter_fn(x)).filter(|x| match self.shown { ShownList::All => {true}, ShownList::GoldDistinct => {x.gold != x.left}, ShownList::LeftRightDistinct => {x.left != x.right} }  ).collect::<Vec<common::Case>>();
         current_cases.sort_by(move |a,b| {sortFn(self.sort_criterion,  a, b)});
 
         let current_case_page = if current_cases.len()>0 
@@ -241,7 +255,7 @@ impl TableDisplay {
 
     fn display_filterbar(&self, cases: &[common::Case]) -> Html {
         html!{
-            <tr style="background-color:lightgrey;"><th colspan="3">{"filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th><th colspan="3">{self.count_sentences(&cases)}</th></tr>
+            <tr style="background-color:lightgrey;"><th colspan="3">{"filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th><th colspan="2"><button onclick=self.link_ref.callback(move |c| {Msg::UpdateShown()})>{match self.shown { ShownList::All => {"all analyses"} , ShownList::GoldDistinct => {"left analysis different from gold"}, ShownList::LeftRightDistinct => {"left analysis different from right"}}}</button></th><th colspan="1">{self.count_sentences(&cases)}</th></tr>
         }
     }
 
