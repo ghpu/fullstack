@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::vec::Vec;
 
 
-#[derive(Serialize, Deserialize, Debug, Clone, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord )]
 pub struct Annotation {
     pub intent: String,
     pub values: Vec<(String,String)>
@@ -41,7 +41,7 @@ impl Corpus {
     }
 }
 
-/* Not use after this point */
+/* Not used after this point */
 
 
 #[derive(Deserialize, Debug)]

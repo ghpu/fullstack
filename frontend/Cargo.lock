@@ -107,6 +107,7 @@ dependencies = [
  "common",
  "serde",
  "serde_derive",
+ "unidecode",
  "wasm-bindgen",
  "yew",
 ]
@@ -457,6 +458,12 @@ name = "unicode-xid"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "826e7639553986605ec5979c7dd957c7895e93eabed50ab2ffa7f6128a75097c"
+
+[[package]]
+name = "unidecode"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "402bb19d8e03f1d1a7450e2bd613980869438e0666331be3e073089124aa1adc"
 
 [[package]]
 name = "wasm-bindgen"

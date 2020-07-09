@@ -5,6 +5,8 @@ use yew::prelude::*;
 use yew::services::console::ConsoleService;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use std::hash::{Hash,Hasher};
+use std::cmp;
+use unidecode;
 
 
 pub struct App {
@@ -23,6 +25,7 @@ pub enum Msg {
     Ignore,
     UpdateCurrentIndex(usize),
     UpdatePageSize(ChangeData),
+    UpdateSort(TableField),
 }
 
 impl Component for App {
@@ -35,7 +38,7 @@ impl Component for App {
             link: link.clone(),
             fetching: false,
             ft: None,
-            table: TableDisplay{current_index: 0, page_size: 50, corpus: common::Corpus::empty(), link_ref:link.clone()},
+            table: TableDisplay{current_index: 0, page_size: 50, corpus: common::Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::Text, SortDirection::Decreasing)},
         }
     }
 
@@ -81,6 +84,20 @@ impl Component for App {
             Msg::UpdateCurrentIndex(ci) => {
                 self.table.current_index=ci;
             }
+            Msg::UpdateSort(f) => {
+                let (c,d) = self.table.sort_criterion;
+                if f == c {
+                    if let SortDirection::Increasing = self.table.sort_criterion.1  {
+                        self.table.sort_criterion.1 = SortDirection::Decreasing;
+                    } else {
+                    self.table.sort_criterion.1 = SortDirection::Increasing;
+                    }
+                }
+                else {
+                   self.table.sort_criterion = (f,SortDirection::Increasing);
+                }
+            }
+
         }
         true
     }
@@ -103,13 +120,69 @@ struct TableDisplay {
     page_size: usize,
     corpus: common::Corpus,
     link_ref: ComponentLink<App>,
+    sort_criterion: (TableField,SortDirection),
+}
+
+#[derive(Clone,Copy, PartialEq, Eq)]
+enum TableField {
+    ID,
+    Text,
+    Count,
+    Gold,
+    Left,
+    Right
+}
+
+#[derive(Clone,Copy)]
+enum SortDirection{
+    Increasing,
+    Decreasing
+}
+
+fn sortFn(criterion: (TableField,SortDirection), a: &common::Case,b: &common::Case) -> std::cmp::Ordering {
+    let (sort,direction) = criterion;
+    let c = if let SortDirection::Increasing = direction {a} else {b};
+    let d = if let SortDirection::Increasing =direction {b} else {a};
+    match sort{
+        TableField::ID => c.reference.partial_cmp(&d.reference).unwrap(),
+        TableField::Text => unidecode::unidecode(&c.text).partial_cmp(&unidecode::unidecode(&d.text)).unwrap(),
+        TableField::Count => c.count.partial_cmp(&d.count).unwrap(),
+        TableField::Gold => c.gold.partial_cmp(&d.gold).unwrap(),
+        TableField::Left => c.left.partial_cmp(&d.left).unwrap(),
+        TableField::Right => c.right.partial_cmp(&d.right).unwrap()
+    }
 }
 
 impl TableDisplay {
+    fn display_header(&self, field:TableField) ->Html {
+        let character = if let (_,SortDirection::Increasing) = self.sort_criterion {" ↑"} else {" ↓"};
+        let name = match (field) {
+            TableField::ID => html!{"ID"},
+            TableField::Text=> html!{"Text"},
+            TableField::Count => html!{"Count"},
+            TableField::Gold  => html!{"Gold reference"},
+            TableField::Left  => html!{"Left analysis"},
+            TableField::Right  => html!{"Right analysis"},
+        };
+        if field == self.sort_criterion.0 {
+            html!{<button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateSort(field)}) >{name}{character}</button>}
+        } else {
+            html!{
+        <button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateSort(field)})>{name}</button>
+            }
+
+        }
+    }
+
     fn display(&self) -> Html {
-        let current_cases = if self.corpus.cases.len()>0 
-        {&self.corpus.cases[self.current_index..std::cmp::min(self.corpus.cases.len(),self.current_index+self.page_size)]
-        } else {&self.corpus.cases};
+        let mut current_cases = self.corpus.cases.to_vec();
+        current_cases.sort_by(move |a,b| {sortFn(self.sort_criterion,  a, b)});
+
+        let current_cases = if current_cases.len()>0 
+        {&current_cases[self.current_index..std::cmp::min(self.corpus.cases.len(),self.current_index+self.page_size)]
+        } else {&current_cases[..]};
+
+
         html! {
             <table style="border-collapse:collapse;">
                 <thead>
@@ -117,7 +190,7 @@ impl TableDisplay {
                 self.corpus.cases.iter().map(|c| {c.count}).sum::<usize>(),
                 self.corpus.cases.len() )}</th><th></th></tr>
                 {self.display_navbar()}
-            <tr style="background-color:lightgrey;"><th>{"ID"}</th><th>{"Text"}</th><th>{"Count"}</th><th>{"Gold reference"}</th><th>{"Left analysis"}</th><th>{"Right analysis"}</th></tr>
+            <tr style="background-color:lightgrey;"><th>{self.display_header(TableField::ID)}</th><th>{self.display_header(TableField::Text)}</th><th>{self.display_header(TableField::Count)}</th><th>{self.display_header(TableField::Gold)}</th><th>{self.display_header(TableField::Left)}</th><th>{self.display_header(TableField::Right)}</th></tr>
                 </thead>
                 <tbody>
                 {for current_cases.iter().map(|c| {self.display_case(&c)})}
@@ -165,7 +238,7 @@ impl TableDisplay {
                                                              >{i}</button>
                                                      }})}</span>
             </th>
-                <th>{"number per page : "}
+                <th>
             <select value=self.page_size onchange=self.link_ref.callback(|c| {Msg::UpdatePageSize(c)})>
             { for [5,10,25,50,100].iter().map( |v| {
                                                          html!{<option value=*v selected= self.page_size == *v  >{*v}</option>}
