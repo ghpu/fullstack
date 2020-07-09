@@ -4,6 +4,9 @@ use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::console::ConsoleService;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
+use yew::services::{TimeoutService};
+use yew::{Callback};
+use std::time::Duration;
 use std::hash::{Hash,Hasher};
 use std::cmp;
 use unidecode;
@@ -11,8 +14,6 @@ use unidecode;
 
 pub struct App {
     link: ComponentLink<Self>,
-    fetch_service: FetchService,
-    console_service: ConsoleService,
     fetching: bool,
     ft: Option<FetchTask>,
     table: TableDisplay,
@@ -26,6 +27,8 @@ pub enum Msg {
     UpdateCurrentIndex(usize),
     UpdatePageSize(ChangeData),
     UpdateSort(TableField),
+    UpdateFilter(String),
+    DebouncedExecution(String),
 }
 
 impl Component for App {
@@ -33,12 +36,10 @@ impl Component for App {
     type Properties = ();
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         App {
-            console_service: ConsoleService::new(),
-            fetch_service: FetchService::new(),
             link: link.clone(),
             fetching: false,
             ft: None,
-            table: TableDisplay{current_index: 0, page_size: 50, corpus: common::Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::Text, SortDirection::Decreasing)},
+            table: TableDisplay{current_index: 0, page_size: 50, corpus: common::Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::Text, SortDirection::Decreasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp))},
         }
     }
 
@@ -50,6 +51,12 @@ impl Component for App {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
+            Msg::UpdateFilter(filter_string) => { 
+                self.table.debounce_handle = TimeoutService::spawn(Duration::from_millis(200), self.link.callback(move |_| Msg::DebouncedExecution(filter_string.clone()) ));
+            }
+            Msg::DebouncedExecution(filter_string) => {
+                self.table.filter = if filter_string=="" {None} else {Some(filter_string)};
+            }
             Msg::NoOp => {}
             Msg::FetchData => {
                 self.fetching = true;
@@ -64,7 +71,7 @@ impl Component for App {
                     },
                     );
                 let request = Request::get("/data").body(Nothing).unwrap();
-                let task = self.fetch_service.fetch(request, callback).unwrap();
+                let task = FetchService::fetch(request, callback).unwrap();
                 self.ft = Some(task);
             }
             Msg::FetchReady(response) => {
@@ -121,6 +128,8 @@ struct TableDisplay {
     corpus: common::Corpus,
     link_ref: ComponentLink<App>,
     sort_criterion: (TableField,SortDirection),
+    filter: Option<String>,
+    debounce_handle: yew::services::timeout::TimeoutTask,
 }
 
 #[derive(Clone,Copy, PartialEq, Eq)]
@@ -189,6 +198,7 @@ impl TableDisplay {
                 <tr style="background-color:lightgrey;"><th colspan="5">{format!("{} sentences ({} distinct)",
                 self.corpus.cases.iter().map(|c| {c.count}).sum::<usize>(),
                 self.corpus.cases.len() )}</th><th></th></tr>
+                {self.display_filterbar()}
                 {self.display_navbar()}
             <tr style="background-color:lightgrey;"><th>{self.display_header(TableField::ID)}</th><th>{self.display_header(TableField::Text)}</th><th>{self.display_header(TableField::Count)}</th><th>{self.display_header(TableField::Gold)}</th><th>{self.display_header(TableField::Left)}</th><th>{self.display_header(TableField::Right)}</th></tr>
                 </thead>
@@ -200,6 +210,12 @@ impl TableDisplay {
             </tfoot>
                 </table>
 
+        }
+    }
+
+    fn display_filterbar(&self) -> Html {
+        html!{
+            <tr style="background-color:lightgrey;"><th colspan="3"><input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th><th colspan="3">{format!("{:?}",self.filter)}</th></tr>
         }
     }
 
