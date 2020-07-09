@@ -19,6 +19,33 @@ pub struct App {
     table: TableDisplay,
 }
 
+struct TableDisplay {
+    current_index: usize,
+    page_size: usize,
+    corpus: common::Corpus,
+    link_ref: ComponentLink<App>,
+    sort_criterion: (TableField,SortDirection),
+    filter: Option<String>,
+    debounce_handle: yew::services::timeout::TimeoutTask,
+}
+
+#[derive(Clone,Copy, PartialEq, Eq)]
+enum TableField {
+    ID,
+    Text,
+    Count,
+    Gold,
+    Left,
+    Right
+}
+
+#[derive(Clone,Copy)]
+enum SortDirection{
+    Increasing,
+    Decreasing
+}
+
+
 pub enum Msg {
     NoOp,
     FetchData,
@@ -122,31 +149,6 @@ impl Component for App {
     }
 }
 
-struct TableDisplay {
-    current_index: usize,
-    page_size: usize,
-    corpus: common::Corpus,
-    link_ref: ComponentLink<App>,
-    sort_criterion: (TableField,SortDirection),
-    filter: Option<String>,
-    debounce_handle: yew::services::timeout::TimeoutTask,
-}
-
-#[derive(Clone,Copy, PartialEq, Eq)]
-enum TableField {
-    ID,
-    Text,
-    Count,
-    Gold,
-    Left,
-    Right
-}
-
-#[derive(Clone,Copy)]
-enum SortDirection{
-    Increasing,
-    Decreasing
-}
 
 fn sortFn(criterion: (TableField,SortDirection), a: &common::Case,b: &common::Case) -> std::cmp::Ordering {
     let (sort,direction) = criterion;
@@ -183,44 +185,69 @@ impl TableDisplay {
         }
     }
 
+    fn count_sentences(&self,what : &[common::Case]) -> String {
+                format!("{} sentences ({} distinct)",
+                what.iter().map(|c| {c.count}).sum::<usize>(),
+                what.len()
+ )
+    }
+
+    fn filter_fn(&self, case: &common::Case) -> bool {
+        if let Some(f) = &self.filter { 
+            if case.text.contains(f) { true } 
+            else if case.gold.iter().any(|x| {x.intent.contains(f) || x.values.iter().any(|y| {y.0.contains(f) || y.1.contains(f)})}) {
+                true
+            }
+            else if case.left.iter().any(|x| {x.intent.contains(f) || x.values.iter().any(|y| {y.0.contains(f) || y.1.contains(f)})}) {
+                true
+            }
+            else if case.right.iter().any(|x| {x.intent.contains(f) || x.values.iter().any(|y| {y.0.contains(f) || y.1.contains(f)})}) {
+                true
+            }
+            else {false}
+        }
+        else {
+            true
+        }
+    }
+
     fn display(&self) -> Html {
         let mut current_cases = self.corpus.cases.to_vec();
+        current_cases = current_cases.into_iter().filter(|x| self.filter_fn(x)).collect::<Vec<common::Case>>();
         current_cases.sort_by(move |a,b| {sortFn(self.sort_criterion,  a, b)});
 
-        let current_cases = if current_cases.len()>0 
-        {&current_cases[self.current_index..std::cmp::min(self.corpus.cases.len(),self.current_index+self.page_size)]
+        let current_case_page = if current_cases.len()>0 
+        {&current_cases[self.current_index..std::cmp::min(current_cases.len(),self.current_index+self.page_size)]
         } else {&current_cases[..]};
 
 
         html! {
             <table style="border-collapse:collapse;">
                 <thead>
-                <tr style="background-color:lightgrey;"><th colspan="5">{format!("{} sentences ({} distinct)",
-                self.corpus.cases.iter().map(|c| {c.count}).sum::<usize>(),
-                self.corpus.cases.len() )}</th><th></th></tr>
-                {self.display_filterbar()}
-                {self.display_navbar()}
+                <tr style="background-color:lightgrey;"><th colspan="5">{"Complete corpus : "}{self.count_sentences(&self.corpus.cases)}</th><th></th></tr>
+                {self.display_filterbar(&current_cases)}
+                {self.display_navbar(&current_cases)}
             <tr style="background-color:lightgrey;"><th>{self.display_header(TableField::ID)}</th><th>{self.display_header(TableField::Text)}</th><th>{self.display_header(TableField::Count)}</th><th>{self.display_header(TableField::Gold)}</th><th>{self.display_header(TableField::Left)}</th><th>{self.display_header(TableField::Right)}</th></tr>
                 </thead>
                 <tbody>
-                {for current_cases.iter().map(|c| {self.display_case(&c)})}
+                {for current_case_page.iter().map(|c| {self.display_case(&c)})}
             </tbody>
                 <tfoot>
-                {self.display_navbar()}
+                {self.display_navbar(&current_cases)}
             </tfoot>
                 </table>
 
         }
     }
 
-    fn display_filterbar(&self) -> Html {
+    fn display_filterbar(&self, cases: &[common::Case]) -> Html {
         html!{
-            <tr style="background-color:lightgrey;"><th colspan="3"><input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th><th colspan="3">{format!("{:?}",self.filter)}</th></tr>
+            <tr style="background-color:lightgrey;"><th colspan="5">{"filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th><th colspan="1">{"filtered : "}{self.count_sentences(&cases)}</th></tr>
         }
     }
 
-    fn display_navbar(&self) -> Html {
-        let nb_pages = (self.corpus.cases.len()+self.page_size-1) / self.page_size;
+    fn display_navbar(&self, cases: &[common::Case]) -> Html {
+        let nb_pages = (cases.len()+self.page_size-1) / self.page_size;
         let mut previous_page_list = vec![];
         let mut next_page_list = vec![];
 
