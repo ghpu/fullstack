@@ -255,7 +255,7 @@ impl TableDisplay {
 
     fn display_filterbar(&self, cases: &[common::Case]) -> Html {
         html!{
-            <tr style="background-color:lightgrey;"><th colspan="3">{"filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th><th colspan="2"><button onclick=self.link_ref.callback(move |c| {Msg::UpdateShown()})>{match self.shown { ShownList::All => {"all analyses"} , ShownList::GoldDistinct => {"left analysis different from gold"}, ShownList::LeftRightDistinct => {"left analysis different from right"}}}</button></th><th colspan="1">{self.count_sentences(&cases)}</th></tr>
+            <tr style="background-color:lightgrey;"><th colspan="3">{"filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th><th colspan="2"><button onclick=self.link_ref.callback(move |c| {Msg::UpdateShown()})>{match self.shown { ShownList::All => {"showing : all analyses"} , ShownList::GoldDistinct => {"showing : left analysis different from gold"}, ShownList::LeftRightDistinct => {"showing : left analysis different from right"}}}</button></th><th colspan="1">{self.count_sentences(&cases)}</th></tr>
         }
     }
 
