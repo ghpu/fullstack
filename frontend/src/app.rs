@@ -167,7 +167,7 @@ impl TableDisplay {
             </th>
                 <th>{"number per page : "}
             <select value=self.page_size onchange=self.link_ref.callback(|c| {Msg::UpdatePageSize(c)})>
-            { for [1,2,10,25,50,100].iter().map( |v| {
+            { for [5,10,25,50,100].iter().map( |v| {
                                                          html!{<option value=*v selected= self.page_size == *v  >{*v}</option>}
                                                      })}
             </select>

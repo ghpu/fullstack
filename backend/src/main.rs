@@ -28,18 +28,7 @@ async fn get_data(_req: HttpRequest) -> impl Responder {
     let case = common::Case {reference:1, count:42,text:"Joue du Joan Baez".to_string(), gold:vec![example_annot.clone()], left:vec![example_annot2.clone()], right:vec![example_annot.clone(),example_annot3.clone()]};
 
     let corpus = std::fs::File::open("/home/ghpu/projets/rust/fullstack/result.json").expect("cannot open result.json");
-    let json: serde_json::Value = serde_json::from_reader(corpus).expect("invalid json in result.json");
-    let samples : &Vec<serde_json::Value> = json[0]["samples"].as_array().unwrap();
-    let mut cases :Vec<common::Case>=vec![];
-    for (i,s) in samples.iter().enumerate() {
-            let annotation = common::Annotation{intent:s["intent"].as_str().unwrap().to_owned(), values:vec![]};
-            cases.push(common::Case {reference: i, count:1, text:s["literal"].as_str().unwrap().to_owned(), gold:vec![annotation.clone()], left:vec![annotation.clone()], right:vec![annotation.clone()]});
-        };
-
-    let corpus = common::Corpus{intentMapping:common::IntentMapping{val:[("Music_play".to_string(),"Music".to_string()),("Movie_play".to_string(),"Television".to_string())].iter().cloned().collect()}, cases};
-
-
-
+    let corpus : common::Corpus = serde_json::from_reader(corpus).unwrap();
 
     web::Json(corpus)
 }
