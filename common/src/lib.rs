@@ -55,10 +55,10 @@ impl Default for AnnotationComparison {
     fn default() -> Self { AnnotationComparison::Different }
 }
 
-pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>, mapping: IntentMapping) -> AnnotationComparison {
+pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> AnnotationComparison {
     let mut result = AnnotationComparison::Different;
     let mut zipped = a.iter().zip(b.iter());
-    if zipped.all(|(c,d)| mapping.val[&c.intent]==mapping.val[&d.intent]) {
+    if zipped.all(|(c,d)| c.domain == d.domain) {
         result = AnnotationComparison::SameDomains;
     }
     if zipped.all(|(c,d)| c.intent==d.intent) {

@@ -135,9 +135,12 @@ impl Component for App {
                         ann.domain = self.table.corpus.intentMapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
                         self.table.corpus.cases[c].right[a] = ann;
                     }
-
-
-
+                // Compute comparisons for all cases
+                for c in 0..self.table.corpus.cases.len() {
+                    self.table.corpus.cases[c].gold_vs_left = compare(&self.table.corpus.cases[c].gold, &self.table.corpus.cases[c].left);
+                    self.table.corpus.cases[c].gold_vs_right = compare(&self.table.corpus.cases[c].gold, &self.table.corpus.cases[c].right);
+                    self.table.corpus.cases[c].right_vs_left = compare(&self.table.corpus.cases[c].right, &self.table.corpus.cases[c].left);
+                }
 
 
                 }
