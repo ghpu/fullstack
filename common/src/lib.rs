@@ -43,7 +43,7 @@ pub struct Annotation {
 }
 
 
-#[derive(Clone,Copy,Hash,Debug)]
+#[derive(Clone,Copy,Hash,Debug,PartialOrd,Ord,PartialEq,Eq)]
 pub enum AnnotationComparison{
     SameValues,
     SameProperties,

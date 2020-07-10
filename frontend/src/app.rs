@@ -27,14 +27,16 @@ struct TableDisplay {
     sort_criterion: (TableField,SortDirection),
     filter: Option<String>,
     debounce_handle: yew::services::timeout::TimeoutTask,
-    shown: ShownList
+    compare: CompareList,
+    level: AnnotationComparison,
 }
 
-enum ShownList {
-    All,
-    GoldDistinct,
-    LeftRightDistinct
+enum CompareList {
+    GoldVSLeft,
+    GoldVSRight,
+    RightVSLeft,
 }
+
 #[derive(Clone,Copy, PartialEq, Eq)]
 pub enum TableField {
     ID,
@@ -63,7 +65,8 @@ pub enum Msg {
     UpdateSort(TableField),
     UpdateFilter(String),
     DebouncedExecution(String),
-    UpdateShown(),
+    UpdateCompare(),
+    UpdateMode(),
 }
 
 impl Component for App {
@@ -74,7 +77,7 @@ impl Component for App {
             link: link.clone(),
             fetching: false,
             ft: None,
-            table: TableDisplay{current_index: 0, page_size: 50, corpus: common::Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::Text, SortDirection::Decreasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), shown: ShownList::All},
+            table: TableDisplay{current_index: 0, page_size: 50, corpus: common::Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::Text, SortDirection::Decreasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, level: AnnotationComparison::SameValues},
         }
     }
 
@@ -86,12 +89,23 @@ impl Component for App {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::UpdateShown() => {
-                if let ShownList::All= self.table.shown {
-                    self.table.shown = ShownList::GoldDistinct;
-                } else if let ShownList::GoldDistinct = self.table.shown { self.table.shown = ShownList::LeftRightDistinct;}
-                else { self.table.shown = ShownList::All;}
+            Msg::UpdateCompare() => {
+                match self.table.compare {
+                    CompareList::GoldVSLeft => self.table.compare = CompareList::GoldVSRight,
+                    CompareList::GoldVSRight => self.table.compare = CompareList::RightVSLeft,
+                    CompareList::RightVSLeft => self.table.compare = CompareList::GoldVSLeft,
+                }
             }
+            Msg::UpdateMode() => {
+                match self.table.level {
+                    AnnotationComparison::SameValues => self.table.level = AnnotationComparison::SameProperties,
+                    AnnotationComparison::SameProperties => self.table.level = AnnotationComparison::SameIntents,
+                    AnnotationComparison::SameIntents=> self.table.level = AnnotationComparison::SameDomains,
+                    AnnotationComparison::SameDomains => self.table.level = AnnotationComparison::Different,
+                    AnnotationComparison::Different => self.table.level = AnnotationComparison::SameValues,
+                }
+            }
+
             Msg::UpdateFilter(filter_string) => { 
                 self.table.debounce_handle = TimeoutService::spawn(Duration::from_millis(200), self.link.callback(move |_| Msg::DebouncedExecution(filter_string.clone()) ));
             }
@@ -254,7 +268,7 @@ impl TableDisplay {
 
     fn display(&self) -> Html {
         let mut current_cases = self.corpus.cases.to_vec();
-        current_cases = current_cases.into_iter().filter(|x| self.filter_fn(x)).filter(|x| match self.shown { ShownList::All => {true}, ShownList::GoldDistinct => {x.gold != x.left}, ShownList::LeftRightDistinct => {x.left != x.right} }  ).collect::<Vec<common::Case>>();
+        current_cases = current_cases.into_iter().filter(|x| self.filter_fn(x)).filter(|x| true  ).collect::<Vec<common::Case>>();
         current_cases.sort_by(move |a,b| {sortFn(self.sort_criterion,  a, b)});
 
         let current_case_page = if current_cases.len()>0 
@@ -282,7 +296,19 @@ impl TableDisplay {
 
     fn display_filterbar(&self, cases: &[common::Case]) -> Html {
         html!{
-            <tr style="background-color:lightgrey;"><th colspan="3">{"filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th><th colspan="2"><button onclick=self.link_ref.callback(move |c| {Msg::UpdateShown()})>{match self.shown { ShownList::All => {"showing : all analyses"} , ShownList::GoldDistinct => {"showing : left analysis different from gold"}, ShownList::LeftRightDistinct => {"showing : left analysis different from right"}}}</button></th><th colspan="1">{self.count_sentences(&cases)}</th></tr>
+            <tr style="background-color:lightgrey;"><th colspan="3">{"filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th>
+                <th colspan="2">
+                    <button onclick=self.link_ref.callback(move |c| {Msg::UpdateCompare()})>{match self.compare { CompareList::GoldVSLeft => {"gold vs left"} , CompareList::GoldVSRight => {"gold vs right"}, CompareList::RightVSLeft => {"right vs left"}}}</button>
+                    <button onclick=self.link_ref.callback(move |c| {Msg::UpdateMode()})>{match self.level {
+                        AnnotationComparison::SameValues => {"same values"},
+                        AnnotationComparison::SameProperties => {"same properties"},
+                        AnnotationComparison::SameIntents => {"same intents"},
+                        AnnotationComparison::SameDomains => {"same domains"},
+                        AnnotationComparison::Different => {"different"},
+                    }}</button>
+
+                </th>
+                <th colspan="1">{self.count_sentences(&cases)}</th></tr>
         }
     }
 
