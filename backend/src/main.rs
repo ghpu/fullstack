@@ -10,23 +10,6 @@ async fn index(req: HttpRequest) -> Result<NamedFile> {
 }
 
 async fn get_data(_req: HttpRequest) -> impl Responder {
-    let example_annot = common::Annotation{intent:"Music_play".to_string(), values:vec![
-        ("artist".to_string(),"Joan Baez".to_string()),
-         ("scene name".to_string(),"Joan Baez".to_string())
-    ]};
-    let example_annot2 = common::Annotation{intent:"Music_play".to_string(), values:vec![
-        ("artist".to_string(),"John Baez".to_string()),
-         ("scene name".to_string(),"John Baez".to_string())
-    ]};
-    let example_annot3 = common::Annotation{intent:"Movie_play".to_string(), values:vec![
-        ("any".to_string(),"John Baez".to_string()),
-        ("artist".to_string(),"John Baez".to_string()),
-         ("scene name".to_string(),"John Baez".to_string())
-    ]};
-
-
-    let case = common::Case {reference:1, count:42,text:"Joue du Joan Baez".to_string(), gold:vec![example_annot.clone()], left:vec![example_annot2.clone()], right:vec![example_annot.clone(),example_annot3.clone()]};
-
     let corpus = std::fs::File::open("/home/ghpu/projets/rust/fullstack/result.json").expect("cannot open result.json");
     let corpus : common::Corpus = serde_json::from_reader(corpus).unwrap();
 

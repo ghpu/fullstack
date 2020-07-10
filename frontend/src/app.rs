@@ -1,5 +1,5 @@
 use anyhow::Error;
-use common::{Annotation,Case, Corpus,IntentMapping};
+use common::{Annotation,Case, Corpus,IntentMapping, AnnotationComparison, compare};
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::console::ConsoleService;
@@ -50,6 +50,7 @@ enum SortDirection{
     Increasing,
     Decreasing
 }
+
 
 
 pub enum Msg {
@@ -117,6 +118,29 @@ impl Component for App {
             Msg::FetchReady(response) => {
                 self.fetching = false;
                 self.table.corpus = response.unwrap_or(common::Corpus::empty()).clone();
+                // add domain to all annotations
+                for c in 0..self.table.corpus.cases.len() {
+                    for a in 0..self.table.corpus.cases[c].gold.len() {
+                        let mut ann = self.table.corpus.cases[c].gold[a].clone();
+                        ann.domain = self.table.corpus.intentMapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
+                        self.table.corpus.cases[c].gold[a] = ann;
+                    }
+                    for a in 0..self.table.corpus.cases[c].left.len() {
+                        let mut ann = self.table.corpus.cases[c].left[a].clone();
+                        ann.domain = self.table.corpus.intentMapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
+                        self.table.corpus.cases[c].left[a] = ann;
+                    }
+                    for a in 0..self.table.corpus.cases[c].right.len() {
+                        let mut ann = self.table.corpus.cases[c].right[a].clone();
+                        ann.domain = self.table.corpus.intentMapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
+                        self.table.corpus.cases[c].right[a] = ann;
+                    }
+
+
+
+
+
+                }
             }
             Msg::Ignore => {
                 self.fetching = false;
@@ -332,7 +356,7 @@ impl TableDisplay {
     fn display_annotation(&self, annot: &common::Annotation, index: usize) -> Html {
         let color = hash_it(annot) % 360;
         let empty = "".to_string();
-        let domain =self.corpus.intentMapping.val.get(&annot.intent).unwrap_or(&empty) ;
+        let domain = &annot.domain; 
 
         html! {
             <table style={format!("border-collapse:separate; padding:0.2em; background-color:hsl({},35%,50%);",color)}>
