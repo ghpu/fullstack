@@ -24,12 +24,13 @@ pub struct App {
 struct TableDisplay {
     current_index: usize,
     page_size: usize,
-    corpus: common::Corpus,
+    corpus: Corpus,
     link_ref: ComponentLink<App>,
     sort_criterion: (TableField,SortDirection),
     filter: Option<String>,
     debounce_handle: yew::services::timeout::TimeoutTask,
     compare: CompareList,
+    operator : Operator,
     level: AnnotationComparison,
 }
 
@@ -38,6 +39,14 @@ enum_str! {
     (GoldVSLeft,"gold vs left"),
     (GoldVSRight,"gold vs right"),
     (RightVSLeft,"right vs left"),
+}
+
+enum_str! {
+    Operator,
+    (LTE,"<="),
+    (GTE,">="),
+    (EQ,"=="),
+    (NEQ,"!="),
 }
 
 enum_str!{
@@ -51,8 +60,8 @@ enum_str!{
 }
 
 enum_str!{SortDirection,
-    (Increasing," ↑"),
-    (Decreasing," ↓"),
+(Increasing," ↑"),
+(Decreasing," ↓"),
 }
 
 
@@ -68,7 +77,8 @@ pub enum Msg {
     UpdateFilter(String),
     DebouncedExecution(String),
     UpdateCompare(ChangeData),
-    UpdateMode(),
+    UpdateOperator(ChangeData),
+    UpdateLevel(ChangeData),
 }
 
 impl Component for App {
@@ -79,7 +89,7 @@ impl Component for App {
             link: link.clone(),
             fetching: false,
             ft: None,
-            table: TableDisplay{current_index: 0, page_size: 50, corpus: common::Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::Text, SortDirection::Decreasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, level: AnnotationComparison::SameValues},
+            table: TableDisplay{current_index: 0, page_size: 50, corpus: Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::Text, SortDirection::Decreasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, operator: Operator::LTE, level: AnnotationComparison::SameValues},
         }
     }
 
@@ -96,16 +106,16 @@ impl Component for App {
                     self.table.compare = CompareList::from_str(&se.value()).unwrap();
                 }
             }
-            Msg::UpdateMode() => {
-                match self.table.level {
-                    AnnotationComparison::SameValues => self.table.level = AnnotationComparison::SameProperties,
-                    AnnotationComparison::SameProperties => self.table.level = AnnotationComparison::SameIntents,
-                    AnnotationComparison::SameIntents=> self.table.level = AnnotationComparison::SameDomains,
-                    AnnotationComparison::SameDomains => self.table.level = AnnotationComparison::Different,
-                    AnnotationComparison::Different => self.table.level = AnnotationComparison::SameValues,
+            Msg::UpdateOperator(cd) => {
+                if let ChangeData::Select(se) = cd {
+                    self.table.operator = Operator::from_str(&se.value()).unwrap();
                 }
             }
-
+            Msg::UpdateLevel(cd) => {
+                if let ChangeData::Select(se) = cd {
+                    self.table.level = AnnotationComparison::from_str(&se.value()).unwrap();
+                }
+            }
             Msg::UpdateFilter(filter_string) => { 
                 self.table.debounce_handle = TimeoutService::spawn(Duration::from_millis(200), self.link.callback(move |_| Msg::DebouncedExecution(filter_string.clone()) ));
             }
@@ -131,7 +141,7 @@ impl Component for App {
             }
             Msg::FetchReady(response) => {
                 self.fetching = false;
-                self.table.corpus = response.unwrap_or(common::Corpus::empty()).clone();
+                self.table.corpus = response.unwrap_or(Corpus::empty()).clone();
                 // add domain to all annotations
                 for c in 0..self.table.corpus.cases.len() {
                     for a in 0..self.table.corpus.cases[c].gold.len() {
@@ -149,12 +159,12 @@ impl Component for App {
                         ann.domain = self.table.corpus.intentMapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
                         self.table.corpus.cases[c].right[a] = ann;
                     }
-                // Compute comparisons for all cases
-                for c in 0..self.table.corpus.cases.len() {
-                    self.table.corpus.cases[c].gold_vs_left = compare(&self.table.corpus.cases[c].gold, &self.table.corpus.cases[c].left);
-                    self.table.corpus.cases[c].gold_vs_right = compare(&self.table.corpus.cases[c].gold, &self.table.corpus.cases[c].right);
-                    self.table.corpus.cases[c].right_vs_left = compare(&self.table.corpus.cases[c].right, &self.table.corpus.cases[c].left);
-                }
+                    // Compute comparisons for all cases
+                    for c in 0..self.table.corpus.cases.len() {
+                        self.table.corpus.cases[c].gold_vs_left = compare(&self.table.corpus.cases[c].gold, &self.table.corpus.cases[c].left);
+                        self.table.corpus.cases[c].gold_vs_right = compare(&self.table.corpus.cases[c].gold, &self.table.corpus.cases[c].right);
+                        self.table.corpus.cases[c].right_vs_left = compare(&self.table.corpus.cases[c].right, &self.table.corpus.cases[c].left);
+                    }
 
 
                 }
@@ -178,11 +188,11 @@ impl Component for App {
                     if let SortDirection::Increasing = self.table.sort_criterion.1  {
                         self.table.sort_criterion.1 = SortDirection::Decreasing;
                     } else {
-                    self.table.sort_criterion.1 = SortDirection::Increasing;
+                        self.table.sort_criterion.1 = SortDirection::Increasing;
                     }
                 }
                 else {
-                   self.table.sort_criterion = (f,SortDirection::Increasing);
+                    self.table.sort_criterion = (f,SortDirection::Increasing);
                 }
             }
 
@@ -194,7 +204,7 @@ impl Component for App {
         html! {
             <div><h1>{ "Case analysis "}</h1>{  
                 if self.fetching {html!{<p>{"Please wait, loading..."}</p>}} else {
-                self.table.display()}
+                    self.table.display()}
             }</div>
         }
     }
@@ -205,7 +215,7 @@ impl Component for App {
 }
 
 
-fn sortFn(criterion: (TableField,SortDirection), a: &common::Case,b: &common::Case) -> std::cmp::Ordering {
+fn sortFn(criterion: (TableField,SortDirection), a: &Case,b: &Case) -> std::cmp::Ordering {
     let (sort,direction) = criterion;
     let c = if let SortDirection::Increasing = direction {a} else {b};
     let d = if let SortDirection::Increasing =direction {b} else {a};
@@ -227,20 +237,20 @@ impl TableDisplay {
             html!{<button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateSort(field)}) >{name}{character}</button>}
         } else {
             html!{
-        <button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateSort(field)})>{name}</button>
+                <button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateSort(field)})>{name}</button>
             }
 
         }
     }
 
-    fn count_sentences(&self,what : &[common::Case]) -> String {
-                format!("{} sentences ({} distinct)",
-                what.iter().map(|c| {c.count}).sum::<usize>(),
-                what.len()
- )
+    fn count_sentences(&self,what : &[Case]) -> String {
+        format!("{} sentences ({} distinct)",
+        what.iter().map(|c| {c.count}).sum::<usize>(),
+        what.len()
+        )
     }
 
-    fn filter_fn(&self, case: &common::Case) -> bool {
+    fn filter_fn(&self, case: &Case) -> bool {
         if let Some(f) = &self.filter { 
             if case.text.contains(f) { true } 
             else if case.gold.iter().any(|x| {x.intent.contains(f) || x.values.iter().any(|y| {y.0.contains(f) || y.1.contains(f)})}) {
@@ -259,9 +269,20 @@ impl TableDisplay {
         }
     }
 
+    fn filter_comparison(&self, c: &Case) -> bool {
+        let d= match self.compare {CompareList::GoldVSLeft => c.gold_vs_left, CompareList::GoldVSRight => c.gold_vs_right, CompareList::RightVSLeft => c.right_vs_left };
+        match self.operator {
+            Operator::LTE => d <= self.level,
+            Operator::GTE => d >= self.level,
+            Operator::EQ => d == self.level,
+            Operator::NEQ => d != self.level,
+        }
+    }
+
     fn display(&self) -> Html {
         let mut current_cases = self.corpus.cases.to_vec();
-        current_cases = current_cases.into_iter().filter(|x| self.filter_fn(x)).filter(|x| true  ).collect::<Vec<common::Case>>();
+        current_cases = current_cases.into_iter().filter(|x| self.filter_fn(x)).filter(|c| self.filter_comparison(c)).collect::<Vec<Case>>();
+
         current_cases.sort_by(move |a,b| {sortFn(self.sort_criterion,  a, b)});
 
         let current_case_page = if current_cases.len()>0 
@@ -273,7 +294,6 @@ impl TableDisplay {
             <table style="border-collapse:collapse;">
                 <thead>
                 {self.display_filterbar(&current_cases)}
-                {self.display_navbar(&current_cases)}
             <tr style="background-color:lightgrey;"><th>{self.display_header(TableField::ID)}</th><th>{self.display_header(TableField::Text)}</th><th>{self.display_header(TableField::Count)}</th><th>{self.display_header(TableField::Gold)}</th><th>{self.display_header(TableField::Left)}</th><th>{self.display_header(TableField::Right)}</th></tr>
                 </thead>
                 <tbody>
@@ -287,25 +307,33 @@ impl TableDisplay {
         }
     }
 
-    fn display_filterbar(&self, cases: &[common::Case]) -> Html {
+    fn display_filterbar(&self, cases: &[Case]) -> Html {
         html!{
-            <tr style="background-color:lightgrey;"><th colspan="3">{"filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th>
-                <th colspan="2">
+            <tr style="background-color:lightgrey;"><th colspan="3">{"text filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th>
+                <th colspan="2">{"comparison mode : "}
                 <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
-            { for CompareList::iterator().map( |v| {
-                                                         html!{<option value=CompareList::as_str(v) selected= self.compare == *v  >{CompareList::as_str(v)}</option>}
-                                                     })}
+                { for CompareList::iterator().map( |v| {
+                                                           html!{<option value=CompareList::as_str(v) selected= self.compare == *v  >{CompareList::as_str(v)}</option>}
+                                                       })}
+            </select>
+            <select onchange=self.link_ref.callback(|c| {Msg::UpdateOperator(c)})>
+                { for Operator::iterator().map( |v| {
+                                                                    html!{<option value=Operator::as_str(v) selected= self.operator == *v  >{Operator::as_str(v)}</option>}
+                                                                })}
             </select>
 
-                    //<button onclick=self.link_ref.callback(move |c| {Msg::UpdateCompare()})>{match self.compare { CompareList::GoldVSLeft => {"gold vs left"} , CompareList::GoldVSRight => {"gold vs right"}, CompareList::RightVSLeft => {"right vs left"}}}</button>
-                    <button onclick=self.link_ref.callback(move |c| {Msg::UpdateMode()})>{AnnotationComparison::as_str(&self.level)}</button>
+                <select onchange=self.link_ref.callback(|c| {Msg::UpdateLevel(c)})>
+                { for AnnotationComparison::iterator().map( |v| {
+                                                                    html!{<option value=AnnotationComparison::as_str(v) selected= self.level == *v  >{AnnotationComparison::as_str(v)}</option>}
+                                                                })}
+            </select>
 
                 </th>
                 <th colspan="1">{self.count_sentences(&cases)}</th></tr>
         }
     }
 
-    fn display_navbar(&self, cases: &[common::Case]) -> Html {
+    fn display_navbar(&self, cases: &[Case]) -> Html {
         let nb_pages = (cases.len()+self.page_size-1) / self.page_size;
         let mut previous_page_list = vec![];
         let mut next_page_list = vec![];
@@ -330,21 +358,21 @@ impl TableDisplay {
         html! {<>
             <tr style="background-color:lightgrey;"><th colspan="5">
                 <span style="display:inline-block; width:30%">{for previous_page_list.iter().map(|&i| {html!{
-                                                         <button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex((i-1) * page_size)})
-                                                             >{i}</button>
-                                                     }})}</span>
+                    <button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex((i-1) * page_size)})
+                        >{i}</button>
+                }})}</span>
             <span style="display: inline-block; width:20%; padding:0.3em;">{format!("page {}/{}", current_page, nb_pages)}</span>
 
-<span style="display:inline-block; width:30%">{for next_page_list.iter().map(|&i| {html!{
-                                                         <button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex((i-1) * page_size)})
-                                                             >{i}</button>
-                                                     }})}</span>
+                <span style="display:inline-block; width:30%">{for next_page_list.iter().map(|&i| {html!{
+                    <button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateCurrentIndex((i-1) * page_size)})
+                        >{i}</button>
+                }})}</span>
             </th>
                 <th>
-            <select value=self.page_size onchange=self.link_ref.callback(|c| {Msg::UpdatePageSize(c)})>
-            { for [5,10,25,50,100].iter().map( |v| {
-                                                         html!{<option value=*v selected= self.page_size == *v  >{*v}</option>}
-                                                     })}
+                <select value=self.page_size onchange=self.link_ref.callback(|c| {Msg::UpdatePageSize(c)})>
+                { for [5,10,25,50,100].iter().map( |v| {
+                                                           html!{<option value=*v selected= self.page_size == *v  >{*v}</option>}
+                                                       })}
             </select>
                 </th>
                 </tr>
@@ -353,7 +381,7 @@ impl TableDisplay {
     }
 
 
-    fn display_case(&self, case: &common::Case) -> Html {
+    fn display_case(&self, case: &Case) -> Html {
         html! {
             <tr style="border-bottom: 1px solid grey;">
                 <td style="text-align:center">{&case.reference}</td>
@@ -366,7 +394,7 @@ impl TableDisplay {
         }
     }
 
-    fn display_annotations(&self, annots: &Vec<common::Annotation>) -> Html {
+    fn display_annotations(&self, annots: &Vec<Annotation>) -> Html {
         html! {
             <table style="border-collapse:collapse">
             {for annots.iter().enumerate().map(|(i,annot)| html! {<tr><td> {self.display_annotation(&annot, i)}</td></tr> })}
@@ -375,7 +403,7 @@ impl TableDisplay {
     }
 
 
-    fn display_annotation(&self, annot: &common::Annotation, index: usize) -> Html {
+    fn display_annotation(&self, annot: &Annotation, index: usize) -> Html {
         let color = hash_it(annot) % 360;
         let empty = "".to_string();
         let domain = &annot.domain; 

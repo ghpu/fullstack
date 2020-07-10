@@ -46,11 +46,12 @@ pub struct Annotation {
 
 enum_str!{
     AnnotationComparison,
-    (SameValues,"same values"),
-    (SameProperties,"same properties"),
-    (SameIntents,"same intents"),
-    (SameDomains,"same domains"),
     (Different,"different"),
+    (SameDomains,"same domains"),
+    (SameIntents,"same intents"),
+    (SameProperties,"same properties"),
+    (SameValues,"same values"),
+
 }
 
 impl Default for AnnotationComparison {
@@ -59,16 +60,16 @@ impl Default for AnnotationComparison {
 
 pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> AnnotationComparison {
     let mut result = AnnotationComparison::Different;
-    let mut zipped = a.iter().zip(b.iter());
-    if zipped.all(|(c,d)| c.domain == d.domain) {
+    let zipped = a.iter().zip(b.iter());
+    if zipped.clone().all(|(c,d)| c.domain == d.domain) {
         result = AnnotationComparison::SameDomains;
     }
-    if zipped.all(|(c,d)| c.intent==d.intent) {
+    if zipped.clone().all(|(c,d)| c.intent==d.intent) {
         result = AnnotationComparison::SameIntents;
-        if zipped.all(|(c,d)| c.values.iter().zip(d.values.iter()).all(|(e,f)| e == f )) {
+        if zipped.clone().all(|(c,d)| c.values.iter().zip(d.values.iter()).all(|(e,f)| e == f )) {
             result = AnnotationComparison::SameValues;
         }
-        else if zipped.all(|(c,d)| c.values.iter().zip(d.values.iter()).all(|(e,f)| e.0 == f.0 )) {
+        else if zipped.clone().all(|(c,d)| c.values.iter().zip(d.values.iter()).all(|(e,f)| e.0 == f.0 )) {
             result = AnnotationComparison::SameProperties;
         } 
     }
@@ -96,8 +97,8 @@ macro_rules! count {
 #[macro_export]
 macro_rules! enum_str {
     ($name:ident, $(($key:ident, $value:expr),)*) => {
-       #[derive(Clone,Copy,Hash,Debug,PartialOrd,Ord,PartialEq,Eq)]
-       pub enum $name
+        #[derive(Clone,Copy,Hash,Debug,PartialOrd,Ord,PartialEq,Eq)]
+        pub enum $name
         {
             $($key),*
         }
@@ -108,7 +109,7 @@ macro_rules! enum_str {
                 match self {
                     $(
                         &$name::$key => $value
-                    ),*
+                     ),*
                 }
             }
         }
@@ -118,19 +119,19 @@ macro_rules! enum_str {
 
             fn from_str(val: &str) -> Result<Self,Self::Err> {
                 match val
-                 {
+                {
                     $(
                         $value => Ok($name::$key)
-                    ),*,
+                     ),*,
                     _ => Err(())
                 }
             }
         }
         impl $name {
-        fn iterator() -> Iter<'static, $name> {
-            static VALUES: [$name; count!($($key)*)] = [$($name::$key),*];
-            VALUES.iter()
-        }
+            pub fn iterator() -> Iter<'static, $name> {
+                static VALUES: [$name; count!($($key)*)] = [$($name::$key),*];
+                VALUES.iter()
+            }
         }
 
     }
