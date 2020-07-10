@@ -199,10 +199,8 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-            <div><h1>{ "Case analysis "}</h1>{  
-                if self.fetching {html!{<p>{"Please wait, loading..."}</p>}} else {
-                    self.table.display()}
-            }</div>
+            if self.fetching {html!{<p>{"Please wait, loading..."}</p>}} else {
+                self.table.display()}
         }
     }
 
@@ -308,15 +306,15 @@ impl TableDisplay {
         html!{
             <tr style="background-color:lightgrey;"><th colspan="3">{"text filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th>
                 <th colspan="2">{"comparison mode : "}
-                <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
-                { for CompareList::iterator().map( |v| {
-                                                           html!{<option value=CompareList::as_str(v) selected= self.compare == *v  >{CompareList::as_str(v)}</option>}
-                                                       })}
+            <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
+            { for CompareList::iterator().map( |v| {
+                                                       html!{<option value=CompareList::as_str(v) selected= self.compare == *v  >{CompareList::as_str(v)}</option>}
+                                                   })}
             </select>
-            <select onchange=self.link_ref.callback(|c| {Msg::UpdateOperator(c)})>
+                <select onchange=self.link_ref.callback(|c| {Msg::UpdateOperator(c)})>
                 { for Operator::iterator().map( |v| {
-                                                                    html!{<option value=Operator::as_str(v) selected= self.operator == *v  >{Operator::as_str(v)}</option>}
-                                                                })}
+                                                        html!{<option value=Operator::as_str(v) selected= self.operator == *v  >{Operator::as_str(v)}</option>}
+                                                    })}
             </select>
 
                 <select onchange=self.link_ref.callback(|c| {Msg::UpdateLevel(c)})>
