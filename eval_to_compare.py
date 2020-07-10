@@ -66,7 +66,7 @@ for k,v in TEXTS.items():
     case = { "text":v["text"], "reference":int(k), "count":int(v["count"]), "gold":v["gold"], "left":v["annotation"], "right":[]}
     CASES.append(case)
 
-corpus = {"intentMapping":{"val":MAPPING}, "cases": CASES}
+corpus = {"intent_mapping":{"val":MAPPING}, "cases": CASES}
 g = open(out,"w",encoding="utf-8")
 g.write(json.dumps(corpus,indent=4, sort_keys=True, ensure_ascii=False))
 

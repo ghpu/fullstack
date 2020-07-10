@@ -1,15 +1,12 @@
-use bimap::BiMap;
 use serde_derive::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::num::NonZeroUsize;
-use std::ops::Range;
+use std::collections::{HashMap};
 use std::str::FromStr;
 use std::vec::Vec;
 use std::slice::Iter;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Corpus {
-    pub intentMapping: IntentMapping,
+    pub intent_mapping: IntentMapping,
     pub cases: Vec<Case>,
 }
 
@@ -80,7 +77,7 @@ pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> AnnotationComparison
 
 impl Corpus {
     pub fn empty() -> Self {
-        Corpus{intentMapping: IntentMapping {val:HashMap::new()}, cases:vec![]}
+        Corpus{intent_mapping: IntentMapping {val:HashMap::new()}, cases:vec![]}
     }
 }
 

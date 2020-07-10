@@ -1,7 +1,6 @@
 use actix_files::NamedFile;
-use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Result, Responder};
+use actix_web::{web, App, HttpRequest, HttpServer, Result, Responder};
 use std::path::PathBuf;
-use std::collections::{HashMap};
 use serde_json;
 
 async fn index(req: HttpRequest) -> Result<NamedFile> {

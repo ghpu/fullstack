@@ -1,16 +1,13 @@
 use anyhow::Error;
 use std::str::FromStr;
-use common::{Annotation,Case, Corpus,IntentMapping, AnnotationComparison, compare, enum_str,AsStr, count};
+use common::{Annotation,Case, Corpus, AnnotationComparison, compare, enum_str,AsStr, count};
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
-use yew::services::console::ConsoleService;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::{TimeoutService};
-use yew::{Callback};
 use std::time::Duration;
 use std::hash::{Hash,Hasher};
 use std::slice::Iter;
-use std::cmp;
 use unidecode;
 
 
@@ -146,17 +143,17 @@ impl Component for App {
                 for c in 0..self.table.corpus.cases.len() {
                     for a in 0..self.table.corpus.cases[c].gold.len() {
                         let mut ann = self.table.corpus.cases[c].gold[a].clone();
-                        ann.domain = self.table.corpus.intentMapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
+                        ann.domain = self.table.corpus.intent_mapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
                         self.table.corpus.cases[c].gold[a] = ann;
                     }
                     for a in 0..self.table.corpus.cases[c].left.len() {
                         let mut ann = self.table.corpus.cases[c].left[a].clone();
-                        ann.domain = self.table.corpus.intentMapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
+                        ann.domain = self.table.corpus.intent_mapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
                         self.table.corpus.cases[c].left[a] = ann;
                     }
                     for a in 0..self.table.corpus.cases[c].right.len() {
                         let mut ann = self.table.corpus.cases[c].right[a].clone();
-                        ann.domain = self.table.corpus.intentMapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
+                        ann.domain = self.table.corpus.intent_mapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
                         self.table.corpus.cases[c].right[a] = ann;
                     }
                     // Compute comparisons for all cases
@@ -183,7 +180,7 @@ impl Component for App {
                 self.table.current_index=ci;
             }
             Msg::UpdateSort(f) => {
-                let (c,d) = self.table.sort_criterion;
+                let (c,_) = self.table.sort_criterion;
                 if f == c {
                     if let SortDirection::Increasing = self.table.sort_criterion.1  {
                         self.table.sort_criterion.1 = SortDirection::Decreasing;
@@ -215,7 +212,7 @@ impl Component for App {
 }
 
 
-fn sortFn(criterion: (TableField,SortDirection), a: &Case,b: &Case) -> std::cmp::Ordering {
+fn sort_function(criterion: (TableField,SortDirection), a: &Case,b: &Case) -> std::cmp::Ordering {
     let (sort,direction) = criterion;
     let c = if let SortDirection::Increasing = direction {a} else {b};
     let d = if let SortDirection::Increasing =direction {b} else {a};
@@ -283,7 +280,7 @@ impl TableDisplay {
         let mut current_cases = self.corpus.cases.to_vec();
         current_cases = current_cases.into_iter().filter(|x| self.filter_fn(x)).filter(|c| self.filter_comparison(c)).collect::<Vec<Case>>();
 
-        current_cases.sort_by(move |a,b| {sortFn(self.sort_criterion,  a, b)});
+        current_cases.sort_by(move |a,b| {sort_function(self.sort_criterion,  a, b)});
 
         let current_case_page = if current_cases.len()>0 
         {&current_cases[self.current_index..std::cmp::min(current_cases.len(),self.current_index+self.page_size)]
@@ -397,15 +394,14 @@ impl TableDisplay {
     fn display_annotations(&self, annots: &Vec<Annotation>) -> Html {
         html! {
             <table style="border-collapse:collapse">
-            {for annots.iter().enumerate().map(|(i,annot)| html! {<tr><td> {self.display_annotation(&annot, i)}</td></tr> })}
+            {for annots.iter().map(|annot| html! {<tr><td> {self.display_annotation(&annot)}</td></tr> })}
             </table>
         }
     }
 
 
-    fn display_annotation(&self, annot: &Annotation, index: usize) -> Html {
+    fn display_annotation(&self, annot: &Annotation) -> Html {
         let color = hash_it(annot) % 360;
-        let empty = "".to_string();
         let domain = &annot.domain; 
 
         html! {
