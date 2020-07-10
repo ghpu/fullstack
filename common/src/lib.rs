@@ -58,15 +58,15 @@ impl Default for AnnotationComparison {
 pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> AnnotationComparison {
     let mut result = AnnotationComparison::Different;
     let zipped = a.iter().zip(b.iter());
-    if zipped.clone().all(|(c,d)| c.domain == d.domain) {
+    if a.len() == b.len() && zipped.clone().all(|(c,d)| c.domain == d.domain) {
         result = AnnotationComparison::SameDomains;
     }
-    if zipped.clone().all(|(c,d)| c.intent==d.intent) {
+    if a.len() == b.len() && zipped.clone().all(|(c,d)| c.intent==d.intent) {
         result = AnnotationComparison::SameIntents;
-        if zipped.clone().all(|(c,d)| c.values.iter().zip(d.values.iter()).all(|(e,f)| e == f )) {
+        if zipped.clone().all(|(c,d)| if c.values.len() != d.values.len() {false}else{c.values.iter().zip(d.values.iter()).all(|(e,f)| e == f )}) {
             result = AnnotationComparison::SameValues;
         }
-        else if zipped.clone().all(|(c,d)| c.values.iter().zip(d.values.iter()).all(|(e,f)| e.0 == f.0 )) {
+        else if zipped.clone().all(|(c,d)| if c.values.len() != d.values.len() {false}else{c.values.iter().zip(d.values.iter()).all(|(e,f)| e.0 == f.0 )}) {
             result = AnnotationComparison::SameProperties;
         } 
     }
