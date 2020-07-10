@@ -1,5 +1,6 @@
 use anyhow::Error;
-use common::{Annotation,Case, Corpus,IntentMapping, AnnotationComparison, compare};
+use std::str::FromStr;
+use common::{Annotation,Case, Corpus,IntentMapping, AnnotationComparison, compare, enum_str,AsStr, count};
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::console::ConsoleService;
@@ -8,6 +9,7 @@ use yew::services::{TimeoutService};
 use yew::{Callback};
 use std::time::Duration;
 use std::hash::{Hash,Hasher};
+use std::slice::Iter;
 use std::cmp;
 use unidecode;
 
@@ -31,10 +33,11 @@ struct TableDisplay {
     level: AnnotationComparison,
 }
 
-enum CompareList {
-    GoldVSLeft,
-    GoldVSRight,
-    RightVSLeft,
+enum_str! {
+    CompareList,
+    (GoldVSLeft,"gold vs left"),
+    (GoldVSRight,"gold vs right"),
+    (RightVSLeft,"right vs left"),
 }
 
 #[derive(Clone,Copy, PartialEq, Eq)]
@@ -65,7 +68,7 @@ pub enum Msg {
     UpdateSort(TableField),
     UpdateFilter(String),
     DebouncedExecution(String),
-    UpdateCompare(),
+    UpdateCompare(ChangeData),
     UpdateMode(),
 }
 
@@ -89,11 +92,9 @@ impl Component for App {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::UpdateCompare() => {
-                match self.table.compare {
-                    CompareList::GoldVSLeft => self.table.compare = CompareList::GoldVSRight,
-                    CompareList::GoldVSRight => self.table.compare = CompareList::RightVSLeft,
-                    CompareList::RightVSLeft => self.table.compare = CompareList::GoldVSLeft,
+            Msg::UpdateCompare(cd) => {
+                if let ChangeData::Select(se) = cd {
+                    self.table.compare = CompareList::from_str(&se.value()).unwrap();
                 }
             }
             Msg::UpdateMode() => {
@@ -298,7 +299,13 @@ impl TableDisplay {
         html!{
             <tr style="background-color:lightgrey;"><th colspan="3">{"filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th>
                 <th colspan="2">
-                    <button onclick=self.link_ref.callback(move |c| {Msg::UpdateCompare()})>{match self.compare { CompareList::GoldVSLeft => {"gold vs left"} , CompareList::GoldVSRight => {"gold vs right"}, CompareList::RightVSLeft => {"right vs left"}}}</button>
+                <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
+            { for CompareList::iterator().map( |v| {
+                                                         html!{<option value=CompareList::as_str(v) selected= self.compare == *v  >{CompareList::as_str(v)}</option>}
+                                                     })}
+            </select>
+
+                    //<button onclick=self.link_ref.callback(move |c| {Msg::UpdateCompare()})>{match self.compare { CompareList::GoldVSLeft => {"gold vs left"} , CompareList::GoldVSRight => {"gold vs right"}, CompareList::RightVSLeft => {"right vs left"}}}</button>
                     <button onclick=self.link_ref.callback(move |c| {Msg::UpdateMode()})>{match self.level {
                         AnnotationComparison::SameValues => {"same values"},
                         AnnotationComparison::SameProperties => {"same properties"},

@@ -5,6 +5,7 @@ use std::num::NonZeroUsize;
 use std::ops::Range;
 use std::str::FromStr;
 use std::vec::Vec;
+use std::slice::Iter;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Corpus {
@@ -75,166 +76,62 @@ pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> AnnotationComparison
 }
 
 
-
-
-
 impl Corpus {
     pub fn empty() -> Self {
         Corpus{intentMapping: IntentMapping {val:HashMap::new()}, cases:vec![]}
     }
 }
 
-/* Not used after this point */
-
-
-#[derive(Deserialize, Debug)]
-pub struct DataFromFile {
-    pub name: String,
+pub trait AsStr {
+    fn as_str(&self) -> &str;
 }
 
-/*
- * A graph representation in Rust
- * All graph elements are owned by a HashSet in a Graph object
- * View are computed with references to these graph elements
- * */
-
-#[derive(Deserialize, Debug)]
-pub struct Graph {
-    names: BiMap<Path, Id>,
-    elements: HashMap<Id, Element>,
-    dependents: HashMap<Id, HashSet<Id>>, // Parent , List of depending nodes
+#[macro_export]
+macro_rules! count {
+    () => (0usize);
+    ( $x:tt $($xs:tt)* ) => (1usize + count!($($xs)*));
 }
 
-impl Graph {
-    fn new() -> Graph {
-        return Graph {
-            names: BiMap::new(),
-            elements: HashMap::new(),
-            dependents: HashMap::new(),
-        };
-    }
-
-    fn contains_path(&self, path: &Path) -> bool {
-        self.names.contains_left(path)
-    }
-
-    fn contains_id(&self, id: &Id) -> bool {
-        self.names.contains_right(id)
-    }
-
-    fn add(&mut self, path: &Path, value: ElementValue) -> Result<Element, GraphError> {
-        if self.contains_path(path) {
-            return Err(GraphError::AlreadyExists);
-        }
-        let id = NonZeroUsize::new(self.names.len() + 1).unwrap(); // 1-based new id
-
-        let e = Element {
-            id: id,
-            value: value.clone(),
-        };
-        match self.elements.insert(id.clone(), e.clone()) {
-            None => (),
-            Some(e) => return Err(GraphError::Error),
+#[macro_export]
+macro_rules! enum_str {
+    ($name:ident, $(($key:ident, $value:expr),)*) => {
+       #[derive(Debug, PartialEq)]
+       enum $name
+        {
+            $($key),*
         }
 
-        match value {
-            ElementValue::LinkValue(l) => {
-                let mut dependents = self
-                    .dependents
-                    .remove(&id.clone())
-                    .unwrap_or(HashSet::new());
-                dependents.insert(l.from);
-                dependents.insert(l.to);
-                self.dependents.insert(id.clone(), dependents);
+
+        impl AsStr for $name {
+            fn as_str(&self) -> &str {
+                match self {
+                    $(
+                        &$name::$key => $value
+                    ),*
+                }
             }
-            _ => (),
         }
 
-        Ok(e)
-    }
-}
+        impl FromStr for $name {
+            type Err = ();
 
-pub type Id = NonZeroUsize;
-
-#[derive(PartialOrd, PartialEq, Eq, Clone, Hash, Debug, Deserialize)]
-pub struct Path(Vec<String>);
-
-#[derive(PartialEq, Eq, Debug, Clone, Deserialize)]
-pub enum ElementValue {
-    NodeValue(Node),
-    LinkValue(Link),
-}
-
-#[derive(PartialEq, Eq, Debug, Clone, Deserialize)]
-pub enum Content {
-    Local(String),
-    Remote(Id, Range<usize>),
-}
-
-#[derive(PartialEq, Eq, Debug, Clone, Deserialize)]
-pub struct Node {
-    content: Content,
-    labels: HashSet<String>,
-    values: HashMap<String, String>,
-    comments: Vec<String>,
-}
-
-impl Node {
-    fn empty() -> Node {
-        Node {
-            content: Content::Local("".to_string()),
-            labels: HashSet::new(),
-            values: HashMap::new(),
-            comments: vec![],
+            fn from_str(val: &str) -> Result<Self,Self::Err> {
+                match val
+                 {
+                    $(
+                        $value => Ok($name::$key)
+                    ),*,
+                    _ => Err(())
+                }
+            }
         }
+        impl $name {
+        fn iterator() -> Iter<'static, $name> {
+            static VALUES: [$name; count!($($key)*)] = [$($name::$key),*];
+            VALUES.iter()
+        }
+        }
+
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Deserialize)]
-pub struct Link {
-    from: Id,
-    to: Id,
-    labels: HashSet<String>,
-    values: HashMap<String, String>,
-    comments: Vec<String>,
-}
-
-/** There can be only one Element for a given id, so we instanciate special version of PartialEq
- * and Hash for Element */
-#[derive(Eq, Debug, Clone, Deserialize)]
-pub struct Element {
-    id: Id,
-    value: ElementValue,
-}
-
-impl From<Node> for ElementValue {
-    fn from(node: Node) -> Self {
-        ElementValue::NodeValue(node)
-    }
-}
-
-impl From<Link> for ElementValue {
-    fn from(link: Link) -> Self {
-        ElementValue::LinkValue(link)
-    }
-}
-
-impl PartialEq for Element {
-    fn eq(&self, other: &Element) -> bool {
-        self.id.eq(&other.id)
-    }
-}
-
-impl std::hash::Hash for Element {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-enum GraphError {
-    AlreadyExists,
-    DontExist,
-    HasParents,
-    Error,
-}
