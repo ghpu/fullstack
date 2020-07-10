@@ -44,14 +44,15 @@ pub struct Annotation {
 }
 
 
-#[derive(Clone,Copy,Hash,Debug,PartialOrd,Ord,PartialEq,Eq)]
-pub enum AnnotationComparison{
-    SameValues,
-    SameProperties,
-    SameIntents,
-    SameDomains,
-    Different
+enum_str!{
+    AnnotationComparison,
+    (SameValues,"same values"),
+    (SameProperties,"same properties"),
+    (SameIntents,"same intents"),
+    (SameDomains,"same domains"),
+    (Different,"different"),
 }
+
 impl Default for AnnotationComparison {
     fn default() -> Self { AnnotationComparison::Different }
 }
@@ -95,8 +96,8 @@ macro_rules! count {
 #[macro_export]
 macro_rules! enum_str {
     ($name:ident, $(($key:ident, $value:expr),)*) => {
-       #[derive(Debug, PartialEq)]
-       enum $name
+       #[derive(Clone,Copy,Hash,Debug,PartialOrd,Ord,PartialEq,Eq)]
+       pub enum $name
         {
             $($key),*
         }

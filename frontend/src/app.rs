@@ -40,20 +40,19 @@ enum_str! {
     (RightVSLeft,"right vs left"),
 }
 
-#[derive(Clone,Copy, PartialEq, Eq)]
-pub enum TableField {
-    ID,
-    Text,
-    Count,
-    Gold,
-    Left,
-    Right
+enum_str!{
+    TableField,
+    (ID,"ID"),
+    (Text,"Text"),
+    (Count,"Count"),
+    (Gold,"Gold"),
+    (Left,"Left"),
+    (Right,"Right"),
 }
 
-#[derive(Clone,Copy)]
-enum SortDirection{
-    Increasing,
-    Decreasing
+enum_str!{SortDirection,
+    (Increasing," ↑"),
+    (Decreasing," ↓"),
 }
 
 
@@ -222,15 +221,8 @@ fn sortFn(criterion: (TableField,SortDirection), a: &common::Case,b: &common::Ca
 
 impl TableDisplay {
     fn display_header(&self, field:TableField) ->Html {
-        let character = if let (_,SortDirection::Increasing) = self.sort_criterion {" ↑"} else {" ↓"};
-        let name = match (field) {
-            TableField::ID => html!{"ID"},
-            TableField::Text=> html!{"Text"},
-            TableField::Count => html!{"Count"},
-            TableField::Gold  => html!{"Gold reference"},
-            TableField::Left  => html!{"Left analysis"},
-            TableField::Right  => html!{"Right analysis"},
-        };
+        let character = SortDirection::as_str(&self.sort_criterion.1);
+        let name = TableField::as_str(&field);
         if field == self.sort_criterion.0 {
             html!{<button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateSort(field)}) >{name}{character}</button>}
         } else {
@@ -306,13 +298,7 @@ impl TableDisplay {
             </select>
 
                     //<button onclick=self.link_ref.callback(move |c| {Msg::UpdateCompare()})>{match self.compare { CompareList::GoldVSLeft => {"gold vs left"} , CompareList::GoldVSRight => {"gold vs right"}, CompareList::RightVSLeft => {"right vs left"}}}</button>
-                    <button onclick=self.link_ref.callback(move |c| {Msg::UpdateMode()})>{match self.level {
-                        AnnotationComparison::SameValues => {"same values"},
-                        AnnotationComparison::SameProperties => {"same properties"},
-                        AnnotationComparison::SameIntents => {"same intents"},
-                        AnnotationComparison::SameDomains => {"same domains"},
-                        AnnotationComparison::Different => {"different"},
-                    }}</button>
+                    <button onclick=self.link_ref.callback(move |c| {Msg::UpdateMode()})>{AnnotationComparison::as_str(&self.level)}</button>
 
                 </th>
                 <th colspan="1">{self.count_sentences(&cases)}</th></tr>
@@ -396,13 +382,6 @@ impl TableDisplay {
 
         html! {
             <table style={format!("border-collapse:separate; padding:0.2em; background-color:hsl({},35%,50%);",color)}>
-                /*<thead>
-                  <tr>
-                  <th>{format!("Intent {}" ,index)}</th>
-                  <th>{"Properties"}</th>
-                  </tr>
-                  </thead>
-                  */
                 <tbody>
                 <tr ><td style={format!("background-color:hsl({},35%,50%);",color)}>
                 <table style={format!("border-collapse:collapse; padding:0.2em; background-color:hsl({},35%,50%);",color)} >
@@ -412,9 +391,6 @@ impl TableDisplay {
                 </td>
                 <td style={format!("border-collapse:collapse; padding:0.2em; background-color:hsl({},35%,50%);",color)}>
                 <table style="border-collapse:collapse" >
-                /*<thead>
-                  <tr><th>{"key"}</th><th>{"value"}</th></tr>
-                  </thead>*/
                 <tbody>
                 {for annot.values.iter().map(|kv| html!{<tr style={format!("background-color:hsl({},70%,80%);",(hash_it("".to_string() +&kv.0 + &kv.1) % 360))} ><td style="padding:0.25em;">{&kv.0}</td><td style="padding:0.25em;">{&kv.1}</td></tr>})}
             </tbody>
