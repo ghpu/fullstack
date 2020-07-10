@@ -86,7 +86,7 @@ impl Component for App {
             link: link.clone(),
             fetching: false,
             ft: None,
-            table: TableDisplay{current_index: 0, page_size: 50, corpus: Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::Text, SortDirection::Decreasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, operator: Operator::LTE, level: AnnotationComparison::SameValues},
+            table: TableDisplay{current_index: 0, page_size: 50, corpus: Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, operator: Operator::LTE, level: AnnotationComparison::SameValues},
         }
     }
 
