@@ -9,6 +9,7 @@ use yew::services::reader::{File, FileData, ReaderService, ReaderTask};
 use std::time::Duration;
 use std::hash::{Hash,Hasher};
 use std::slice::Iter;
+use std::collections::HashMap;
 use unidecode;
 
 
@@ -17,15 +18,19 @@ pub struct App {
     fetching: bool,
     //ft: Option<FetchTask>,
     table: TableDisplay,
+    graph: GraphDisplay,
     task: Option<ReaderTask>,
+    corpus: Corpus
+}
+
+struct GraphDisplay {
+    opened: bool,
 }
 
 struct TableDisplay {
     opened: bool,
-    graphed: bool,
     current_index: usize,
     page_size: usize,
-    corpus: Corpus,
     link_ref: ComponentLink<App>,
     sort_criterion: (TableField,SortDirection),
     filter: Option<String>,
@@ -94,7 +99,9 @@ impl Component for App {
             link: link.clone(),
             fetching: false,
             //       ft: None,
-            table: TableDisplay{opened: true, graphed: true, current_index: 0, page_size: 50, corpus: Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, operator: Operator::LTE, level: AnnotationComparison::SameValues},
+            corpus: Corpus::empty(),
+            graph: GraphDisplay{opened: true},
+            table: TableDisplay{opened: true, current_index: 0, page_size: 50, link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, operator: Operator::LTE, level: AnnotationComparison::SameValues},
             task: None,
         }
     }
@@ -111,7 +118,7 @@ impl Component for App {
                 self.table.opened= !self.table.opened;
             }
             Msg::ToggleGraph => {
-                self.table.graphed= !self.table.graphed;
+                self.graph.opened= !self.graph.opened;
             }
             Msg::Loaded(s) => {
                 let data: Json<Result<Corpus, Error>> = Ok(s).into();
@@ -167,29 +174,29 @@ impl Component for App {
              */
             Msg::FetchReady(response) => {
                 self.fetching = false;
-                self.table.corpus = response.unwrap_or(Corpus::empty()).clone();
+                self.corpus = response.unwrap_or(Corpus::empty()).clone();
                 // add domain to all annotations
-                for c in 0..self.table.corpus.cases.len() {
-                    for a in 0..self.table.corpus.cases[c].gold.len() {
-                        let mut ann = self.table.corpus.cases[c].gold[a].clone();
-                        ann.domain = self.table.corpus.intent_mapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
-                        self.table.corpus.cases[c].gold[a] = ann;
+                for c in 0..self.corpus.cases.len() {
+                    for a in 0..self.corpus.cases[c].gold.len() {
+                        let mut ann = self.corpus.cases[c].gold[a].clone();
+                        ann.domain = self.corpus.intent_mapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
+                        self.corpus.cases[c].gold[a] = ann;
                     }
-                    for a in 0..self.table.corpus.cases[c].left.len() {
-                        let mut ann = self.table.corpus.cases[c].left[a].clone();
-                        ann.domain = self.table.corpus.intent_mapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
-                        self.table.corpus.cases[c].left[a] = ann;
+                    for a in 0..self.corpus.cases[c].left.len() {
+                        let mut ann = self.corpus.cases[c].left[a].clone();
+                        ann.domain = self.corpus.intent_mapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
+                        self.corpus.cases[c].left[a] = ann;
                     }
-                    for a in 0..self.table.corpus.cases[c].right.len() {
-                        let mut ann = self.table.corpus.cases[c].right[a].clone();
-                        ann.domain = self.table.corpus.intent_mapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
-                        self.table.corpus.cases[c].right[a] = ann;
+                    for a in 0..self.corpus.cases[c].right.len() {
+                        let mut ann = self.corpus.cases[c].right[a].clone();
+                        ann.domain = self.corpus.intent_mapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
+                        self.corpus.cases[c].right[a] = ann;
                     }
                     // Compute comparisons for all cases
-                    for c in 0..self.table.corpus.cases.len() {
-                        self.table.corpus.cases[c].gold_vs_left = compare(&self.table.corpus.cases[c].gold, &self.table.corpus.cases[c].left);
-                        self.table.corpus.cases[c].gold_vs_right = compare(&self.table.corpus.cases[c].gold, &self.table.corpus.cases[c].right);
-                        self.table.corpus.cases[c].right_vs_left = compare(&self.table.corpus.cases[c].right, &self.table.corpus.cases[c].left);
+                    for c in 0..self.corpus.cases.len() {
+                        self.corpus.cases[c].gold_vs_left = compare(&self.corpus.cases[c].gold, &self.corpus.cases[c].left);
+                        self.corpus.cases[c].gold_vs_right = compare(&self.corpus.cases[c].gold, &self.corpus.cases[c].right);
+                        self.corpus.cases[c].right_vs_left = compare(&self.corpus.cases[c].right, &self.corpus.cases[c].left);
                     }
 
 
@@ -239,8 +246,9 @@ impl Component for App {
                     } else { Msg::NoOp}
                 })/>
                 <button onclick=self.link.callback(|x| Msg::ToggleTable)>{if self.table.opened {"📂"} else {"📁"}}</button>
-                <button onclick=self.link.callback(|x| Msg::ToggleGraph)>{if self.table.graphed {"📈"} else {"📉"}}</button>
-                {if self.table.opened {self.table.display()} else {html!{}}}
+                    <button onclick=self.link.callback(|x| Msg::ToggleGraph)>{if self.graph.opened {"📈"} else {"📉"}}</button>
+                    {if self.graph.opened {self.graph.display(&self.corpus)} else {html!{}}}
+                {if self.table.opened {self.table.display(&self.corpus)} else {html!{}}}
                 </>}
             }
         }
@@ -264,6 +272,64 @@ fn sort_function(criterion: (TableField,SortDirection), a: &Case,b: &Case) -> st
         TableField::Left => c.left.partial_cmp(&d.left).unwrap(),
         TableField::Right => c.right.partial_cmp(&d.right).unwrap()
     }
+}
+
+impl GraphDisplay {
+    fn display(&self, corpus: &Corpus) -> Html {
+        html! {<table>
+            <tr>
+            <td>{self.display_pie(corpus, CompareList::GoldVSLeft)}</td>
+            <td>{self.display_pie(corpus, CompareList::GoldVSRight)}</td>
+            <td>{self.display_pie(corpus, CompareList::RightVSLeft)}</td>
+            </tr>
+            </table>
+        }
+    }
+    fn display_pie(&self, corpus: &Corpus, mode: CompareList) -> Html {
+        let pi: f32 = 3.14159265358979;
+        let radius: f32 = 70.;
+        let mut hm : HashMap<AnnotationComparison,usize> = HashMap::new();
+        for i in 0..corpus.cases.len() {
+            let what =
+                match mode {
+                    CompareList::GoldVSLeft => corpus.cases[i].gold_vs_left,
+                    CompareList::GoldVSRight => corpus.cases[i].gold_vs_right,
+                    CompareList::RightVSLeft => corpus.cases[i].right_vs_left
+                };
+            let count = hm.entry(what).or_insert(0);
+            *count +=1;
+        }
+
+        let sum = hm.values().fold(0, |acc, x| acc + x);
+        let mut offset = 0.;
+        let mut pos = vec!();
+        let colors=["red","orange","yellow","green","lightgreen"];
+        let mut color_index=0;
+        for a in AnnotationComparison::iterator() {
+            let length = *hm.get(a).unwrap_or(&0);
+            pos.push(((2.*pi*radius*length as f32) / (sum as f32)
+                     ,2.*pi*radius*(sum as f32 - length as f32) / (sum as f32)
+                     ,2.*pi*radius*(0.25 - offset as f32)
+                     , colors[color_index]
+                     ));
+            color_index +=1;
+            offset += length as f32 / (sum as f32);
+        }
+
+        html!{<>
+            <center><h3>{CompareList::as_str(&mode)}</h3></center>
+            <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="150" cy="150" r="100" fill="#fff"></circle>
+                {for pos.iter().map(|p| html!{
+                                                                       <circle cx="150" cy="150" r={format!("{}",radius)} fill="transparent" stroke={format!("{}",p.3)} stroke-width={format!("{}",2.*radius)} stroke-dasharray={format!("{} {}", p.0,p.1)} stroke-dashoffset={format!("{}",p.2)}></circle>
+
+                                                                   })}
+            </svg>
+            {for AnnotationComparison::iterator().map(|v| html!{<div>{format!("{} : {} ({:.2}%)",AnnotationComparison::as_str(v), hm.get(v).unwrap_or(&0)  ,  *hm.get(v).unwrap_or(&0) as f32 / (sum as f32) * 100.)}</div>})}
+            </>
+        }
+    }
+
 }
 
 impl TableDisplay {
@@ -316,8 +382,8 @@ impl TableDisplay {
         }
     }
 
-    fn display(&self) -> Html {
-        let mut current_cases = self.corpus.cases.to_vec();
+    fn display(&self, corpus: &Corpus) -> Html {
+        let mut current_cases = corpus.cases.to_vec();
         current_cases = current_cases.into_iter().filter(|x| self.filter_fn(x)).filter(|c| self.filter_comparison(c)).collect::<Vec<Case>>();
 
         current_cases.sort_by(move |a,b| {sort_function(self.sort_criterion,  a, b)});
@@ -345,31 +411,31 @@ impl TableDisplay {
     }
 
     fn display_filterbar(&self, cases: &[Case]) -> Html {
-            html!{
-                <tr style="background-color:lightgrey;">
-                    <th colspan="3">{"text filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th>
-                    <th colspan="2">{"comparison mode : "}
-                <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
-                { for CompareList::iterator().map( |v| {
-                                                           html!{<option value=CompareList::as_str(v) selected= self.compare == *v  >{CompareList::as_str(v)}</option>}
-                                                       })}
-                </select>
-                    <select onchange=self.link_ref.callback(|c| {Msg::UpdateOperator(c)})>
-                    { for Operator::iterator().map( |v| {
-                                                            html!{<option value=Operator::as_str(v) selected= self.operator == *v  >{Operator::as_str(v)}</option>}
-                                                        })}
-                </select>
+        html!{
+            <tr style="background-color:lightgrey;">
+                <th colspan="3">{"text filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th>
+                <th colspan="2">{"comparison mode : "}
+            <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
+            { for CompareList::iterator().map( |v| {
+                                                       html!{<option value=CompareList::as_str(v) selected= self.compare == *v  >{CompareList::as_str(v)}</option>}
+                                                   })}
+            </select>
+                <select onchange=self.link_ref.callback(|c| {Msg::UpdateOperator(c)})>
+                { for Operator::iterator().map( |v| {
+                                                        html!{<option value=Operator::as_str(v) selected= self.operator == *v  >{Operator::as_str(v)}</option>}
+                                                    })}
+            </select>
 
-                    <select onchange=self.link_ref.callback(|c| {Msg::UpdateLevel(c)})>
-                    { for AnnotationComparison::iterator().map( |v| {
-                                                                        html!{<option value=AnnotationComparison::as_str(v) selected= self.level == *v  >{AnnotationComparison::as_str(v)}</option>}
-                                                                    })}
-                </select>
+                <select onchange=self.link_ref.callback(|c| {Msg::UpdateLevel(c)})>
+                { for AnnotationComparison::iterator().map( |v| {
+                                                                    html!{<option value=AnnotationComparison::as_str(v) selected= self.level == *v  >{AnnotationComparison::as_str(v)}</option>}
+                                                                })}
+            </select>
 
-                    </th>
-                    <th colspan="1">{self.count_sentences(&cases)}</th>
-                    </tr>
-            }
+                </th>
+                <th colspan="1">{self.count_sentences(&cases)}</th>
+                </tr>
+        }
     }
 
     fn display_navbar(&self, cases: &[Case]) -> Html {
