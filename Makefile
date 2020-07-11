@@ -4,6 +4,7 @@ all: backend common frontend
 	mkdir out && \
 	mkdir out/pkg && \
 	pushd backend && \
+	#cargo build --release --target x86_64-pc-windows-gnu && \
 	cargo build --release && \
 	cp target/release/backend ../out/server && \
 	popd && \

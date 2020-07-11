@@ -4,7 +4,8 @@ use common::{Annotation,Case, Corpus, AnnotationComparison, compare, enum_str,As
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
-use yew::services::{TimeoutService};
+use yew::services::TimeoutService;
+use yew::services::reader::{File, FileData, ReaderService, ReaderTask};
 use std::time::Duration;
 use std::hash::{Hash,Hasher};
 use std::slice::Iter;
@@ -14,8 +15,9 @@ use unidecode;
 pub struct App {
     link: ComponentLink<Self>,
     fetching: bool,
-    ft: Option<FetchTask>,
+    //ft: Option<FetchTask>,
     table: TableDisplay,
+    task: Option<ReaderTask>,
 }
 
 struct TableDisplay {
@@ -65,9 +67,9 @@ enum_str!{SortDirection,
 
 pub enum Msg {
     NoOp,
-    FetchData,
+    //FetchData,
     FetchReady(Result<Corpus, Error>),
-    Ignore,
+//    Ignore,
     UpdateCurrentIndex(usize),
     UpdatePageSize(ChangeData),
     UpdateSort(TableField),
@@ -76,6 +78,8 @@ pub enum Msg {
     UpdateCompare(ChangeData),
     UpdateOperator(ChangeData),
     UpdateLevel(ChangeData),
+    File(File),
+    Loaded(String),
 }
 
 impl Component for App {
@@ -85,19 +89,32 @@ impl Component for App {
         App {
             link: link.clone(),
             fetching: false,
-            ft: None,
+     //       ft: None,
             table: TableDisplay{current_index: 0, page_size: 50, corpus: Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, operator: Operator::LTE, level: AnnotationComparison::SameValues},
+            task: None,
         }
     }
 
     fn rendered(&mut self, first_render: bool) {
         if first_render {
-            self.link.callback(|_| Msg::FetchData).emit("");
+            //self.link.callback(|_| Msg::FetchData).emit("");
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
+            Msg::Loaded(s) => {
+                let data: Json<Result<Corpus, Error>> = Ok(s).into();
+                let Json(dump) = data;
+                self.link.callback(|x| Msg::FetchReady(x)).emit(dump);
+            }
+            Msg::File(file) => {
+                let task = {
+                    let callback = self.link.callback(|x:FileData| {Msg::Loaded(unsafe {String::from_utf8_unchecked(x.content)})});
+                    ReaderService::new().read_file(file, callback).unwrap()
+                };
+                self.task=Some(task);
+            }
             Msg::UpdateCompare(cd) => {
                 if let ChangeData::Select(se) = cd {
                     self.table.compare = CompareList::from_str(&se.value()).unwrap();
@@ -120,7 +137,8 @@ impl Component for App {
                 self.table.filter = if filter_string=="" {None} else {Some(filter_string)};
             }
             Msg::NoOp => {}
-            Msg::FetchData => {
+            /*
+             * Msg::FetchData => {
                 self.fetching = true;
                 let callback = self.link.callback(
                     move |response: Response<Json<Result<Corpus, Error>>>| {
@@ -136,6 +154,7 @@ impl Component for App {
                 let task = FetchService::fetch(request, callback).unwrap();
                 self.ft = Some(task);
             }
+            */
             Msg::FetchReady(response) => {
                 self.fetching = false;
                 self.table.corpus = response.unwrap_or(Corpus::empty()).clone();
@@ -166,9 +185,11 @@ impl Component for App {
 
                 }
             }
+            /*
             Msg::Ignore => {
                 self.fetching = false;
             }
+            */
 
             Msg::UpdatePageSize(cd) => {
                 if let ChangeData::Select(se) = cd {
@@ -200,7 +221,14 @@ impl Component for App {
     fn view(&self) -> Html {
         html! {
             if self.fetching {html!{<p>{"Please wait, loading..."}</p>}} else {
-                self.table.display()}
+                html!{<><input type="file" multiple=false onchange=self.link.callback(move |value|{
+                    if let ChangeData::Files(file) = value {
+                    Msg::File(file.get(0).unwrap())
+                    } else { Msg::NoOp}
+                })/>
+                {self.table.display()}
+                </>}
+            }
         }
     }
 
