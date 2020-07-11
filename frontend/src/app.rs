@@ -44,7 +44,7 @@ enum_str! {
     CompareList,
     (GoldVSLeft,"gold vs left"),
     (GoldVSRight,"gold vs right"),
-    (RightVSLeft,"right vs left"),
+    (LeftVSRight,"left vs right"),
 }
 
 enum_str! {
@@ -196,9 +196,8 @@ impl Component for App {
                     for c in 0..self.corpus.cases.len() {
                         self.corpus.cases[c].gold_vs_left = compare(&self.corpus.cases[c].gold, &self.corpus.cases[c].left);
                         self.corpus.cases[c].gold_vs_right = compare(&self.corpus.cases[c].gold, &self.corpus.cases[c].right);
-                        self.corpus.cases[c].right_vs_left = compare(&self.corpus.cases[c].right, &self.corpus.cases[c].left);
+                        self.corpus.cases[c].left_vs_right = compare(&self.corpus.cases[c].left, &self.corpus.cases[c].right);
                     }
-
 
                 }
 
@@ -278,11 +277,11 @@ impl GraphDisplay {
     fn display(&self, corpus: &Corpus) -> Html {
         html! {<table>
             <tr>
-            <td>{self.display_pie(corpus, CompareList::GoldVSLeft)}</td>
-            <td>{self.display_pie(corpus, CompareList::GoldVSRight)}</td>
-            <td>{self.display_pie(corpus, CompareList::RightVSLeft)}</td>
-            </tr>
-            </table>
+                <td>{self.display_pie(corpus, CompareList::GoldVSLeft)}</td>
+                <td>{self.display_pie(corpus, CompareList::GoldVSRight)}</td>
+                <td>{self.display_pie(corpus, CompareList::LeftVSRight)}</td>
+                </tr>
+                </table>
         }
     }
     fn display_pie(&self, corpus: &Corpus, mode: CompareList) -> Html {
@@ -294,7 +293,7 @@ impl GraphDisplay {
                 match mode {
                     CompareList::GoldVSLeft => corpus.cases[i].gold_vs_left,
                     CompareList::GoldVSRight => corpus.cases[i].gold_vs_right,
-                    CompareList::RightVSLeft => corpus.cases[i].right_vs_left
+                    CompareList::LeftVSRight => corpus.cases[i].left_vs_right
                 };
             let count = hm.entry(what).or_insert(0);
             *count +=1;
@@ -308,9 +307,9 @@ impl GraphDisplay {
         for a in AnnotationComparison::iterator() {
             let length = *hm.get(a).unwrap_or(&0);
             pos.push(((2.*pi*radius*length as f32) / (sum as f32)
-                     ,2.*pi*radius*(sum as f32 - length as f32) / (sum as f32)
-                     ,2.*pi*radius*(0.25 - offset as f32)
-                     , colors[color_index]
+                      ,2.*pi*radius*(sum as f32 - length as f32) / (sum as f32)
+                      ,2.*pi*radius*(0.25 - offset as f32)
+                      , colors[color_index]
                      ));
             color_index +=1;
             offset += length as f32 / (sum as f32);
@@ -318,12 +317,12 @@ impl GraphDisplay {
 
         html!{<>
             <center><h3>{CompareList::as_str(&mode)}</h3></center>
-            <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="150" cy="150" r="100" fill="#fff"></circle>
                 {for pos.iter().map(|p| html!{
-                                                                       <circle cx="150" cy="150" r={format!("{}",radius)} fill="transparent" stroke={format!("{}",p.3)} stroke-width={format!("{}",2.*radius)} stroke-dasharray={format!("{} {}", p.0,p.1)} stroke-dashoffset={format!("{}",p.2)}></circle>
+                                                 <circle cx="150" cy="150" r={format!("{}",radius)} fill="transparent" stroke={format!("{}",p.3)} stroke-width={format!("{}",2.*radius)} stroke-dasharray={format!("{} {}", p.0,p.1)} stroke-dashoffset={format!("{}",p.2)}></circle>
 
-                                                                   })}
+                                             })}
             </svg>
             {for AnnotationComparison::iterator().map(|v| html!{<div>{format!("{} : {} ({:.2}%)",AnnotationComparison::as_str(v), hm.get(v).unwrap_or(&0)  ,  *hm.get(v).unwrap_or(&0) as f32 / (sum as f32) * 100.)}</div>})}
             </>
@@ -373,7 +372,7 @@ impl TableDisplay {
     }
 
     fn filter_comparison(&self, c: &Case) -> bool {
-        let d= match self.compare {CompareList::GoldVSLeft => c.gold_vs_left, CompareList::GoldVSRight => c.gold_vs_right, CompareList::RightVSLeft => c.right_vs_left };
+        let d= match self.compare {CompareList::GoldVSLeft => c.gold_vs_left, CompareList::GoldVSRight => c.gold_vs_right, CompareList::LeftVSRight => c.left_vs_right };
         match self.operator {
             Operator::LTE => d <= self.level,
             Operator::GTE => d >= self.level,

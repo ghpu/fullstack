@@ -28,7 +28,7 @@ pub struct Case {
     #[serde(skip)]
     pub gold_vs_right: AnnotationComparison,
     #[serde(skip)]
-    pub right_vs_left: AnnotationComparison,
+    pub left_vs_right: AnnotationComparison,
 }
 
 
