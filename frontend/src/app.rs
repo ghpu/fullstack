@@ -21,6 +21,7 @@ pub struct App {
 }
 
 struct TableDisplay {
+    opened: bool,
     current_index: usize,
     page_size: usize,
     corpus: Corpus,
@@ -69,7 +70,7 @@ pub enum Msg {
     NoOp,
     //FetchData,
     FetchReady(Result<Corpus, Error>),
-//    Ignore,
+    //    Ignore,
     UpdateCurrentIndex(usize),
     UpdatePageSize(ChangeData),
     UpdateSort(TableField),
@@ -80,6 +81,8 @@ pub enum Msg {
     UpdateLevel(ChangeData),
     File(File),
     Loaded(String),
+    OpenTable,
+    CloseTable,
 }
 
 impl Component for App {
@@ -89,8 +92,8 @@ impl Component for App {
         App {
             link: link.clone(),
             fetching: false,
-     //       ft: None,
-            table: TableDisplay{current_index: 0, page_size: 50, corpus: Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, operator: Operator::LTE, level: AnnotationComparison::SameValues},
+            //       ft: None,
+            table: TableDisplay{opened: true, current_index: 0, page_size: 50, corpus: Corpus::empty(), link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, operator: Operator::LTE, level: AnnotationComparison::SameValues},
             task: None,
         }
     }
@@ -103,6 +106,12 @@ impl Component for App {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
+            Msg::OpenTable => {
+                self.table.opened=true;
+            }
+            Msg::CloseTable => {
+                self.table.opened=false;
+            }
             Msg::Loaded(s) => {
                 let data: Json<Result<Corpus, Error>> = Ok(s).into();
                 let Json(dump) = data;
@@ -139,22 +148,22 @@ impl Component for App {
             Msg::NoOp => {}
             /*
              * Msg::FetchData => {
-                self.fetching = true;
-                let callback = self.link.callback(
-                    move |response: Response<Json<Result<Corpus, Error>>>| {
-                        let (meta, Json(data)) = response.into_parts();
-                        if meta.status.is_success() {
-                            Msg::FetchReady(data)
-                        } else {
-                            Msg::Ignore
-                        }
-                    },
-                    );
-                let request = Request::get("/data").body(Nothing).unwrap();
-                let task = FetchService::fetch(request, callback).unwrap();
-                self.ft = Some(task);
-            }
-            */
+             self.fetching = true;
+             let callback = self.link.callback(
+             move |response: Response<Json<Result<Corpus, Error>>>| {
+             let (meta, Json(data)) = response.into_parts();
+             if meta.status.is_success() {
+             Msg::FetchReady(data)
+             } else {
+             Msg::Ignore
+             }
+             },
+             );
+             let request = Request::get("/data").body(Nothing).unwrap();
+             let task = FetchService::fetch(request, callback).unwrap();
+             self.ft = Some(task);
+             }
+             */
             Msg::FetchReady(response) => {
                 self.fetching = false;
                 self.table.corpus = response.unwrap_or(Corpus::empty()).clone();
@@ -186,10 +195,10 @@ impl Component for App {
                 }
             }
             /*
-            Msg::Ignore => {
-                self.fetching = false;
-            }
-            */
+               Msg::Ignore => {
+               self.fetching = false;
+               }
+               */
 
             Msg::UpdatePageSize(cd) => {
                 if let ChangeData::Select(se) = cd {
@@ -223,7 +232,7 @@ impl Component for App {
             if self.fetching {html!{<p>{"Please wait, loading..."}</p>}} else {
                 html!{<><input type="file" multiple=false onchange=self.link.callback(move |value|{
                     if let ChangeData::Files(file) = value {
-                    Msg::File(file.get(0).unwrap())
+                        Msg::File(file.get(0).unwrap())
                     } else { Msg::NoOp}
                 })/>
                 {self.table.display()}
@@ -317,42 +326,55 @@ impl TableDisplay {
             <table style="border-collapse:collapse;">
                 <thead>
                 {self.display_filterbar(&current_cases)}
-            <tr style="background-color:lightgrey;"><th>{self.display_header(TableField::ID)}</th><th>{self.display_header(TableField::Text)}</th><th>{self.display_header(TableField::Count)}</th><th>{self.display_header(TableField::Gold)}</th><th>{self.display_header(TableField::Left)}</th><th>{self.display_header(TableField::Right)}</th></tr>
-                </thead>
-                <tbody>
-                {for current_case_page.iter().map(|c| {self.display_case(&c)})}
-            </tbody>
-                <tfoot>
-                {self.display_navbar(&current_cases)}
-            </tfoot>
-                </table>
+            {if self.opened { html!{
+                                       <tr style="background-color:lightgrey;"><th>{self.display_header(TableField::ID)}</th><th>{self.display_header(TableField::Text)}</th><th>{self.display_header(TableField::Count)}</th><th>{self.display_header(TableField::Gold)}</th><th>{self.display_header(TableField::Left)}</th><th>{self.display_header(TableField::Right)}</th></tr>
+                                   } } else {html!{}}}
+            </thead>
+            {if self.opened { html!{<>
+                                       <tbody>
+                                       {for current_case_page.iter().map(|c| {self.display_case(&c)})}
+                                       </tbody>
+                                           <tfoot>
+                                           {self.display_navbar(&current_cases)}
+                                       </tfoot>
+                                           </>
+                                   } } else {html!{}}}
+            </table>
 
         }
     }
 
     fn display_filterbar(&self, cases: &[Case]) -> Html {
         html!{
-            <tr style="background-color:lightgrey;"><th colspan="3">{"text filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th>
-                <th colspan="2">{"comparison mode : "}
-            <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
-            { for CompareList::iterator().map( |v| {
-                                                       html!{<option value=CompareList::as_str(v) selected= self.compare == *v  >{CompareList::as_str(v)}</option>}
-                                                   })}
-            </select>
-                <select onchange=self.link_ref.callback(|c| {Msg::UpdateOperator(c)})>
-                { for Operator::iterator().map( |v| {
-                                                        html!{<option value=Operator::as_str(v) selected= self.operator == *v  >{Operator::as_str(v)}</option>}
-                                                    })}
-            </select>
+            <tr style="background-color:lightgrey;">
+            {if self.opened { html!{<>
+                                       <th><button onclick=self.link_ref.callback(|x| Msg::CloseTable) >{"📂"}</button></th>
+                                           <th colspan="2">{"text filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th>
+                                           <th colspan="2">{"comparison mode : "}
+                                       <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
+                                       { for CompareList::iterator().map( |v| {
+                                                                                  html!{<option value=CompareList::as_str(v) selected= self.compare == *v  >{CompareList::as_str(v)}</option>}
+                                                                              })}
+                                       </select>
+                                           <select onchange=self.link_ref.callback(|c| {Msg::UpdateOperator(c)})>
+                                           { for Operator::iterator().map( |v| {
+                                                                                   html!{<option value=Operator::as_str(v) selected= self.operator == *v  >{Operator::as_str(v)}</option>}
+                                                                               })}
+                                       </select>
 
-                <select onchange=self.link_ref.callback(|c| {Msg::UpdateLevel(c)})>
-                { for AnnotationComparison::iterator().map( |v| {
-                                                                    html!{<option value=AnnotationComparison::as_str(v) selected= self.level == *v  >{AnnotationComparison::as_str(v)}</option>}
-                                                                })}
-            </select>
+                                           <select onchange=self.link_ref.callback(|c| {Msg::UpdateLevel(c)})>
+                                           { for AnnotationComparison::iterator().map( |v| {
+                                                                                               html!{<option value=AnnotationComparison::as_str(v) selected= self.level == *v  >{AnnotationComparison::as_str(v)}</option>}
+                                                                                           })}
+                                       </select>
 
-                </th>
-                <th colspan="1">{self.count_sentences(&cases)}</th></tr>
+                                           </th>
+                                           <th colspan="1">{self.count_sentences(&cases)}</th>
+                                           </>
+                                   }
+                            } else {html!{
+                                <tr style="background-color:lightgrey;"><th style="text-align:left"><button onclick=self.link_ref.callback(|x| Msg::OpenTable)>{"📁"}</button></th></tr>}}}
+            </tr>
         }
     }
 
