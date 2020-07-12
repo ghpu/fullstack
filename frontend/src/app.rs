@@ -275,7 +275,7 @@ fn sort_function(criterion: (TableField,SortDirection), a: &Case,b: &Case) -> st
 
 impl GraphDisplay {
     fn display(&self, corpus: &Corpus) -> Html {
-        html! {<table>
+        html! {<table id="graph">
             <tr>
                 <td>{self.display_pie(corpus, CompareList::GoldVSLeft)}</td>
                 <td>{self.display_pie(corpus, CompareList::GoldVSRight)}</td>
@@ -302,7 +302,7 @@ impl GraphDisplay {
         let sum = hm.values().fold(0, |acc, x| acc + x);
         let mut offset = 0.;
         let mut pos = vec!();
-        let colors=["red","orange","yellow","green","lightgreen"];
+        let colors=["#e31a1c","#feb24c","#ffffcc","#41ab5d","#005a32"];
         let mut color_index=0;
         for a in AnnotationComparison::iterator() {
             let length = *hm.get(a).unwrap_or(&0);
@@ -393,7 +393,7 @@ impl TableDisplay {
 
 
         html! {
-            <table style="border-collapse:collapse;">
+            <table id="table" style="border-collapse:collapse;">
                 <thead>
                 {self.display_filterbar(&current_cases)}
             <tr style="background-color:lightgrey;"><th>{self.display_header(TableField::ID)}</th><th>{self.display_header(TableField::Text)}</th><th>{self.display_header(TableField::Count)}</th><th>{self.display_header(TableField::Gold)}</th><th>{self.display_header(TableField::Left)}</th><th>{self.display_header(TableField::Right)}</th></tr>
