@@ -244,8 +244,9 @@ impl Component for App {
                         Msg::File(file.get(0).unwrap())
                     } else { Msg::NoOp}
                 })/>
-                <button onclick=self.link.callback(|x| Msg::ToggleTable)>{if self.table.opened {"📂"} else {"📁"}}</button>
-                    <button onclick=self.link.callback(|x| Msg::ToggleGraph)>{if self.graph.opened {"📈"} else {"📉"}}</button>
+                <button onclick=self.link.callback(|x| Msg::ToggleGraph)>{if self.graph.opened {"📈"} else {"📉"}}</button>
+
+                    <button onclick=self.link.callback(|x| Msg::ToggleTable)>{if self.table.opened {"📂"} else {"📁"}}</button>
                     {if self.graph.opened {self.graph.display(&self.corpus)} else {html!{}}}
                 {if self.table.opened {self.table.display(&self.corpus)} else {html!{}}}
                 </>}
