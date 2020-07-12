@@ -318,7 +318,9 @@ impl GraphDisplay {
         html!{<>
             <center><h3>{CompareList::as_str(&mode)}</h3></center>
                 <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="150" cy="150" r="100" fill="#fff"></circle>
+                <circle cx="152" cy="152" r={radius *5./4.} fill="#444"></circle>
+                <circle cx="152" cy="152" r={radius *3./4.} fill="#fff"></circle>
+                <text x="150" y="150" style="fill:black; text-anchor: middle; dominant-baseline: middle;" font-size="24">{format!("{:.1}", *hm.get(&AnnotationComparison::SameValues).unwrap_or(&0) as f32 / (sum as f32) * 100.)}</text>
                 {for pos.iter().map(|p| html!{
                                                  <circle cx="150" cy="150" r={format!("{}",radius)} fill="transparent" stroke={format!("{}",p.3)} stroke-width={format!("{}",0.5*radius)} stroke-dasharray={format!("{} {}", p.0,p.1)} stroke-dashoffset={format!("{}",p.2)}></circle>
 
