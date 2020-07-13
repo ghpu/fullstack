@@ -18,6 +18,7 @@ pub struct App {
     fetching: bool,
     //ft: Option<FetchTask>,
     global: GlobalDisplay,
+    scatter: ScatterDisplay,
     table: TableDisplay,
     graph: GraphDisplay,
 
@@ -29,6 +30,27 @@ struct GlobalDisplay {
     gold: bool,
     left: bool,
     right:bool
+}
+
+struct ScatterDisplay {
+    empties: bool,
+    mode : ScatterMode,
+}
+
+impl std::fmt::Display for ScatterDisplay {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.mode {
+            ScatterMode::All => write!(f, "all entries"),
+            ScatterMode::Domain(d) => write!(f, "{} entries", d),
+            ScatterMode::Intent(i) => write!(f, "{} entries", i)
+    }
+}
+}
+
+enum ScatterMode {
+    All,
+    Domain(String),
+    Intent(String),
 }
 
 struct GraphDisplay {
@@ -112,6 +134,7 @@ impl Component for App {
             //       ft: None,
             corpus: Corpus::empty(),
             global: GlobalDisplay{gold:true, left:true,right:true},
+            scatter: ScatterDisplay{empties: true, mode: ScatterMode::All},
             graph: GraphDisplay{opened: true},
             table: TableDisplay{opened: true, current_index: 0, page_size: 50, link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, operator: Operator::LTE, level: AnnotationComparison::SameValues},
             task: None,
@@ -454,10 +477,10 @@ impl TableDisplay {
     fn display_filterbar(&self, cases: &[Case], app: &App) -> Html {
         html!{
             <>
-            <tr style="background-color:lightgrey;"><th colspan="6">{self.count_sentences(&cases)}</th></tr>
+            <tr style="background-color:lightgrey;"><th colspan="6"><span>{&app.scatter}</span><span>{self.count_sentences(&cases)}</span></th></tr>
             <tr style="background-color:lightgrey;">
-                <th colspan="6">{"text filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/>
-                {"comparison mode : "}
+                <th colspan="6"><span>{"text filter : "}</span><input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/>
+                <span>{ "comparison mode : "}</span>
             <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
             {if app.global.gold && app.global.left 
                 {html!{<option value=CompareList::as_str(&CompareList::GoldVSLeft) selected = self.compare == CompareList::GoldVSLeft>{CompareList::as_str(&CompareList::GoldVSLeft)}</option>}}
