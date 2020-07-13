@@ -159,8 +159,8 @@ impl Component for App {
             }
 
             Msg::UpdateGlobalFilterTarget(cd) => {
-                let mut domains = self.corpus.intent_mapping.val.values().collect::<Vec<&String>>();
-                let mut intents = self.corpus.intent_mapping.val.keys().collect::<Vec<&String>>();
+                let domains = self.corpus.intent_mapping.val.values().collect::<Vec<&String>>();
+                let intents = self.corpus.intent_mapping.val.keys().collect::<Vec<&String>>();
 
                 if let ChangeData::Select(se) = cd {
                     let s = &se.value();
@@ -335,6 +335,40 @@ impl Component for App {
 }
 
 impl App {
+
+    fn target_filter(&self, what: &Annotation) -> bool {
+        match &self.global.filter_target {
+            GlobalFilterTarget::Domain(d) => what.domain==*d,
+            GlobalFilterTarget::Intent(i) => what.intent==*i,
+
+        }
+    }
+
+    fn limit_filter(&self, what: &Case, mode: &CompareList ) -> bool {
+        let (a,b) = match mode {
+            CompareList::GoldVSLeft => (&what.gold, &what.left),
+            CompareList::GoldVSRight => (&what.gold, &what.right),
+            CompareList::LeftVSRight => (&what.left, &what.right),
+        };
+
+        match self.global.filter_mode  {
+            GlobalFilterMode::None => true,
+            GlobalFilterMode::A  =>  a.iter().any(|a| self.target_filter(a) ),
+            GlobalFilterMode::B => b.iter().any(|b| self.target_filter(b) ),
+            GlobalFilterMode::AORB => a.iter().any(|a| self.target_filter(a)) || b.iter().any(|b| self.target_filter(b)),
+        }
+    }
+    fn display_global_filter_infos(&self) -> Html {
+        if let GlobalFilterMode::None = self.global.filter_mode {
+            html!{}
+        } else {
+            html!{<span>
+                {"Limited to : "}{GlobalFilterMode::as_str(&self.global.filter_mode)}{" containing "}{&self.global.filter_target}
+                </span>
+            }
+        }
+    }
+
     fn display_global_filter(&self) -> Html {
         let mut domains = self.corpus.intent_mapping.val.values().collect::<Vec<&String>>();
         domains.sort_unstable();
@@ -387,25 +421,34 @@ impl GraphDisplay {
         html! {<table id="graph">
             <tr>
             {if app.global.gold && app.global.left 
-                {html!{<td>{self.display_pie(&app.corpus, CompareList::GoldVSLeft)}</td>}} else {html!{<td/>}}}
+                {html!{<td>{self.display_pie(&app.corpus, CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}
             {if app.global.gold && app.global.right 
-                {html!{<td>{self.display_pie(&app.corpus, CompareList::GoldVSRight)}</td>}} else {html!{<td/>}}}
+                {html!{<td>{self.display_pie(&app.corpus, CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}
             {if app.global.left && app.global.right
-                {html!{<td>{self.display_pie(&app.corpus, CompareList::LeftVSRight)}</td>}} else {html!{<td/>}}}
+                {html!{<td>{self.display_pie(&app.corpus, CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}
             </tr>
                 </table>
         }
     }
-    fn display_pie(&self, corpus: &Corpus, mode: CompareList) -> Html {
+    fn display_pie(&self, corpus: &Corpus, mode: CompareList, app: &App) -> Html {
         let pi: f32 = 3.14159265358979;
         let radius: f32 = 70.;
         let mut hm : HashMap<AnnotationComparison,usize> = HashMap::new();
-        for i in 0..corpus.cases.len() {
+        let mut current_cases = corpus.cases.to_vec();
+
+        current_cases = match app.global.filter_mode {
+            GlobalFilterMode::None => corpus.cases.to_vec(),
+            GlobalFilterMode::A => current_cases.into_iter().filter(|x| app.limit_filter(x, &mode)).collect::<Vec<Case>>(),
+            GlobalFilterMode::B => corpus.cases.to_vec(),
+            GlobalFilterMode::AORB => corpus.cases.to_vec(),
+        };
+
+        for i in 0..current_cases.len() {
             let what =
                 match mode {
-                    CompareList::GoldVSLeft => corpus.cases[i].gold_vs_left,
-                    CompareList::GoldVSRight => corpus.cases[i].gold_vs_right,
-                    CompareList::LeftVSRight => corpus.cases[i].left_vs_right
+                    CompareList::GoldVSLeft => current_cases[i].gold_vs_left,
+                    CompareList::GoldVSRight => current_cases[i].gold_vs_right,
+                    CompareList::LeftVSRight => current_cases[i].left_vs_right
                 };
             let count = hm.entry(what).or_insert(0);
             *count +=1;
@@ -429,6 +472,7 @@ impl GraphDisplay {
 
         html!{<>
             <center><h3>{CompareList::as_str(&mode)}</h3></center>
+            <center><h4>{app.display_global_filter_infos()}</h4></center>
                 <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="152" cy="152" r={radius *5./4.} fill="#444"></circle>
                 <circle cx="152" cy="152" r={radius *3./4.} fill="#fff"></circle>
@@ -497,6 +541,7 @@ impl TableDisplay {
 
     fn display(&self, app: &App) -> Html {
         let mut current_cases = app.corpus.cases.to_vec();
+        // table filter
         current_cases = current_cases.into_iter().filter(|x| self.filter_fn(x)).filter(|c| self.filter_comparison(c)).collect::<Vec<Case>>();
 
         current_cases.sort_by(move |a,b| {sort_function(self.sort_criterion,  a, b)});
@@ -533,21 +578,10 @@ impl TableDisplay {
         }
     }
 
-    fn display_global_filter_infos(&self, app: &App) -> Html {
-        if let GlobalFilterMode::None = app.global.filter_mode {
-            html!{}
-        } else {
-            html!{<span>
-                {"Limited to : "}{GlobalFilterMode::as_str(&app.global.filter_mode)}{" containing "}{&app.global.filter_target}
-                </span>
-            }
-        }
-    }
-
     fn display_filterbar(&self, cases: &[Case], app: &App) -> Html {
         html!{
             <>
-                <tr style="background-color:lightgrey;"><th colspan="6"><span>{self.count_sentences(&cases)}</span>{self.display_global_filter_infos(app)}</th></tr>
+                <tr style="background-color:lightgrey;"><th colspan="6"><span>{self.count_sentences(&cases)}</span>{app.display_global_filter_infos()}</th></tr>
                 <tr style="background-color:lightgrey;">
                 <th colspan="6"><span>{"text filter : "}</span><input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/>
                 <span>{ "comparison mode : "}</span>
