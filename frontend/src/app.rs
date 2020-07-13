@@ -267,13 +267,13 @@ impl Component for App {
                 })/>
                 <button onclick=self.link.callback(|x| Msg::ToggleGraph) selected={self.graph.opened}>{if self.graph.opened {"✓ "} else {""}}{"📈"}</button>
                 <button onclick=self.link.callback(|x| Msg::ToggleTable) selected={self.table.opened}>{if self.table.opened {"✓ "} else {""}}{"📁"}</button>
-                <button onclick=self.link.callback(|x| Msg::ToggleGold)>{if self.global.gold {"✓ "} else {""}}{"💰"}</button>
-                <button onclick=self.link.callback(|x| Msg::ToggleLeft)>{if self.global.left {"✓ "} else {""}}{"←"}</button>
-                <button onclick=self.link.callback(|x| Msg::ToggleRight)>{if self.global.right {"✓ "} else {""}}{"→"}</button>
+                <button onclick=self.link.callback(|x| Msg::ToggleGold)>{if self.global.gold {"✓ "} else {""}}{"Gold"}</button>
+                <button onclick=self.link.callback(|x| Msg::ToggleLeft)>{if self.global.left {"✓ "} else {""}}{"Left"}</button>
+                <button onclick=self.link.callback(|x| Msg::ToggleRight)>{if self.global.right {"✓ "} else {""}}{"Right"}</button>
 
 
 
-                    {if self.graph.opened {self.graph.display(&self.corpus)} else {html!{}}}
+                    {if self.graph.opened {self.graph.display(&self)} else {html!{}}}
                 {if self.table.opened {self.table.display(&self)} else {html!{}}}
                 </>}
             }
@@ -301,12 +301,15 @@ fn sort_function(criterion: (TableField,SortDirection), a: &Case,b: &Case) -> st
 }
 
 impl GraphDisplay {
-    fn display(&self, corpus: &Corpus) -> Html {
+    fn display(&self, app: &App) -> Html {
         html! {<table id="graph">
             <tr>
-                <td>{self.display_pie(corpus, CompareList::GoldVSLeft)}</td>
-                <td>{self.display_pie(corpus, CompareList::GoldVSRight)}</td>
-                <td>{self.display_pie(corpus, CompareList::LeftVSRight)}</td>
+            {if app.global.gold && app.global.left 
+                {html!{<td>{self.display_pie(&app.corpus, CompareList::GoldVSLeft)}</td>}} else {html!{<td/>}}}
+            {if app.global.gold && app.global.right 
+                {html!{<td>{self.display_pie(&app.corpus, CompareList::GoldVSRight)}</td>}} else {html!{<td/>}}}
+            {if app.global.left && app.global.right
+                {html!{<td>{self.display_pie(&app.corpus, CompareList::LeftVSRight)}</td>}} else {html!{<td/>}}}
                 </tr>
                 </table>
         }
