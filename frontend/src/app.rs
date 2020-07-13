@@ -17,10 +17,18 @@ pub struct App {
     link: ComponentLink<Self>,
     fetching: bool,
     //ft: Option<FetchTask>,
+    global: GlobalDisplay,
     table: TableDisplay,
     graph: GraphDisplay,
+
     task: Option<ReaderTask>,
     corpus: Corpus
+}
+
+struct GlobalDisplay {
+    gold: bool,
+    left: bool,
+    right:bool
 }
 
 struct GraphDisplay {
@@ -89,6 +97,9 @@ pub enum Msg {
     Loaded(String),
     ToggleTable,
     ToggleGraph,
+    ToggleGold,
+    ToggleLeft,
+    ToggleRight,
 }
 
 impl Component for App {
@@ -100,6 +111,7 @@ impl Component for App {
             fetching: false,
             //       ft: None,
             corpus: Corpus::empty(),
+            global: GlobalDisplay{gold:true, left:true,right:true},
             graph: GraphDisplay{opened: true},
             table: TableDisplay{opened: true, current_index: 0, page_size: 50, link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, operator: Operator::LTE, level: AnnotationComparison::SameValues},
             task: None,
@@ -114,6 +126,15 @@ impl Component for App {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
+            Msg::ToggleGold => {
+                self.global.gold= !self.global.gold;
+            }
+            Msg::ToggleLeft => {
+                self.global.left= !self.global.left;
+            }
+            Msg::ToggleRight => {
+                self.global.right= !self.global.right;
+            }
             Msg::ToggleTable => {
                 self.table.opened= !self.table.opened;
             }
@@ -244,11 +265,16 @@ impl Component for App {
                         Msg::File(file.get(0).unwrap())
                     } else { Msg::NoOp}
                 })/>
-                <button onclick=self.link.callback(|x| Msg::ToggleGraph)>{if self.graph.opened {"📈"} else {"📉"}}</button>
+                <button onclick=self.link.callback(|x| Msg::ToggleGraph) selected={self.graph.opened}>{if self.graph.opened {"✓ "} else {""}}{"📈"}</button>
+                <button onclick=self.link.callback(|x| Msg::ToggleTable) selected={self.table.opened}>{if self.table.opened {"✓ "} else {""}}{"📁"}</button>
+                <button onclick=self.link.callback(|x| Msg::ToggleGold)>{if self.global.gold {"✓ "} else {""}}{"💰"}</button>
+                <button onclick=self.link.callback(|x| Msg::ToggleLeft)>{if self.global.left {"✓ "} else {""}}{"←"}</button>
+                <button onclick=self.link.callback(|x| Msg::ToggleRight)>{if self.global.right {"✓ "} else {""}}{"→"}</button>
 
-                    <button onclick=self.link.callback(|x| Msg::ToggleTable)>{if self.table.opened {"📂"} else {"📁"}}</button>
+
+
                     {if self.graph.opened {self.graph.display(&self.corpus)} else {html!{}}}
-                {if self.table.opened {self.table.display(&self.corpus)} else {html!{}}}
+                {if self.table.opened {self.table.display(&self)} else {html!{}}}
                 </>}
             }
         }
@@ -384,8 +410,8 @@ impl TableDisplay {
         }
     }
 
-    fn display(&self, corpus: &Corpus) -> Html {
-        let mut current_cases = corpus.cases.to_vec();
+    fn display(&self, app: &App) -> Html {
+        let mut current_cases = app.corpus.cases.to_vec();
         current_cases = current_cases.into_iter().filter(|x| self.filter_fn(x)).filter(|c| self.filter_comparison(c)).collect::<Vec<Case>>();
 
         current_cases.sort_by(move |a,b| {sort_function(self.sort_criterion,  a, b)});
@@ -399,10 +425,20 @@ impl TableDisplay {
             <table id="table" style="border-collapse:collapse;">
                 <thead>
                 {self.display_filterbar(&current_cases)}
-            <tr style="background-color:lightgrey;"><th>{self.display_header(TableField::ID)}</th><th>{self.display_header(TableField::Text)}</th><th>{self.display_header(TableField::Count)}</th><th>{self.display_header(TableField::Gold)}</th><th>{self.display_header(TableField::Left)}</th><th>{self.display_header(TableField::Right)}</th></tr>
+            <tr style="background-color:lightgrey;">
+                <th>{self.display_header(TableField::ID)}</th>
+                <th>{self.display_header(TableField::Text)}</th>
+                <th>{self.display_header(TableField::Count)}</th>
+                {if app.global.gold {html!{
+                <th>{self.display_header(TableField::Gold)}</th>}} else {html!{<th/>}}}
+                {if app.global.left {html!{
+                <th>{self.display_header(TableField::Left)}</th>}} else {html!{<th/>}}}
+                {if app.global.right {html!{
+                <th>{self.display_header(TableField::Right)}</th>}} else {html!{<th/>}}}
+                </tr>
                 </thead>
                 <tbody>
-                {for current_case_page.iter().map(|c| {self.display_case(&c)})}
+                {for current_case_page.iter().map(|c| {self.display_case(&c, app)})}
             </tbody>
                 <tfoot>
                 {self.display_navbar(&current_cases)}
@@ -488,15 +524,18 @@ impl TableDisplay {
     }
 
 
-    fn display_case(&self, case: &Case) -> Html {
+    fn display_case(&self, case: &Case, app: &App) -> Html {
         html! {
             <tr style="border-bottom: 1px solid grey;">
                 <td style="text-align:center">{&case.reference}</td>
                 <td>{&case.text}</td>
                 <td style="text-align:center">{&case.count}</td>
-                <td>{self.display_annotations(&case.gold)}</td>
-                <td>{self.display_annotations(&case.left)}</td>
-                <td>{self.display_annotations(&case.right)}</td>
+                {if {app.global.gold}
+                    {html!{<td>{self.display_annotations(&case.gold)}</td>}} else {html!{<td/>}}}
+                {if {app.global.left}
+                    {html!{<td>{self.display_annotations(&case.left)}</td>}} else {html!{<td/>}}}
+                {if {app.global.right}
+                    {html!{<td>{self.display_annotations(&case.right)}</td>}} else {html!{<td/>}}}
                 </tr>
         }
     }
