@@ -265,8 +265,8 @@ impl Component for App {
                         Msg::File(file.get(0).unwrap())
                     } else { Msg::NoOp}
                 })/>
-                <button onclick=self.link.callback(|x| Msg::ToggleGraph) selected={self.graph.opened}>{if self.graph.opened {"✓ "} else {""}}{"📈"}</button>
-                <button onclick=self.link.callback(|x| Msg::ToggleTable) selected={self.table.opened}>{if self.table.opened {"✓ "} else {""}}{"📁"}</button>
+                <button onclick=self.link.callback(|x| Msg::ToggleGraph) selected={self.graph.opened}>{if self.graph.opened {"✓ "} else {""}}{"📊"}</button>
+                <button onclick=self.link.callback(|x| Msg::ToggleTable) selected={self.table.opened}>{if self.table.opened {"✓ "} else {""}}{"📔"}</button>
                 <button onclick=self.link.callback(|x| Msg::ToggleGold)>{if self.global.gold {"✓ "} else {""}}{"Gold"}</button>
                 <button onclick=self.link.callback(|x| Msg::ToggleLeft)>{if self.global.left {"✓ "} else {""}}{"Left"}</button>
                 <button onclick=self.link.callback(|x| Msg::ToggleRight)>{if self.global.right {"✓ "} else {""}}{"Right"}</button>
@@ -427,7 +427,7 @@ impl TableDisplay {
         html! {
             <table id="table" style="border-collapse:collapse;">
                 <thead>
-                {self.display_filterbar(&current_cases)}
+                {self.display_filterbar(&current_cases, &app)}
             <tr style="background-color:lightgrey;">
                 <th>{self.display_header(TableField::ID)}</th>
                 <th>{self.display_header(TableField::Text)}</th>
@@ -451,7 +451,7 @@ impl TableDisplay {
         }
     }
 
-    fn display_filterbar(&self, cases: &[Case]) -> Html {
+    fn display_filterbar(&self, cases: &[Case], app: &App) -> Html {
         html!{
             <>
             <tr style="background-color:lightgrey;"><th colspan="6">{self.count_sentences(&cases)}</th></tr>
@@ -459,10 +459,20 @@ impl TableDisplay {
                 <th colspan="6">{"text filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/>
                 {"comparison mode : "}
             <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
-            { for CompareList::iterator().map( |v| {
-                                                       html!{<option value=CompareList::as_str(v) selected= self.compare == *v  >{CompareList::as_str(v)}</option>}
-                                                   })}
+            {if app.global.gold && app.global.left 
+                {html!{<option value=CompareList::as_str(&CompareList::GoldVSLeft) selected = self.compare == CompareList::GoldVSLeft>{CompareList::as_str(&CompareList::GoldVSLeft)}</option>}}
+                else {html!{}}
+            }
+            {if app.global.gold && app.global.right 
+                {html!{<option value=CompareList::as_str(&CompareList::GoldVSRight) selected = self.compare == CompareList::GoldVSRight>{CompareList::as_str(&CompareList::GoldVSRight)}</option>}}
+                else {html!{}}
+            }
+            {if app.global.left && app.global.right
+                {html!{<option value=CompareList::as_str(&CompareList::LeftVSRight) selected = self.compare == CompareList::LeftVSRight>{CompareList::as_str(&CompareList::LeftVSRight)}</option>}}
+                else {html!{}}
+            }
             </select>
+
                 <select onchange=self.link_ref.callback(|c| {Msg::UpdateOperator(c)})>
                 { for Operator::iterator().map( |v| {
                                                         html!{<option value=Operator::as_str(v) selected= self.operator == *v  >{Operator::as_str(v)}</option>}
