@@ -453,9 +453,11 @@ impl TableDisplay {
 
     fn display_filterbar(&self, cases: &[Case]) -> Html {
         html!{
+            <>
+            <tr style="background-color:lightgrey;"><th colspan="6">{self.count_sentences(&cases)}</th></tr>
             <tr style="background-color:lightgrey;">
-                <th colspan="3">{"text filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/></th>
-                <th colspan="2">{"comparison mode : "}
+                <th colspan="6">{"text filter : "}<input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/>
+                {"comparison mode : "}
             <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
             { for CompareList::iterator().map( |v| {
                                                        html!{<option value=CompareList::as_str(v) selected= self.compare == *v  >{CompareList::as_str(v)}</option>}
@@ -474,8 +476,8 @@ impl TableDisplay {
             </select>
 
                 </th>
-                <th colspan="1">{self.count_sentences(&cases)}</th>
                 </tr>
+                </>
         }
     }
 
