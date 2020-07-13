@@ -9,7 +9,7 @@ use yew::services::reader::{File, FileData, ReaderService, ReaderTask};
 use std::time::Duration;
 use std::hash::{Hash,Hasher};
 use std::slice::Iter;
-use std::collections::HashMap;
+use std::collections::{HashMap};
 use unidecode;
 
 
@@ -18,7 +18,6 @@ pub struct App {
     fetching: bool,
     //ft: Option<FetchTask>,
     global: GlobalDisplay,
-    scatter: ScatterDisplay,
     table: TableDisplay,
     graph: GraphDisplay,
 
@@ -29,28 +28,31 @@ pub struct App {
 struct GlobalDisplay {
     gold: bool,
     left: bool,
-    right:bool
+    right:bool,
+    filter_mode: GlobalFilterMode,
+    filter_target: GlobalFilterTarget
 }
 
-struct ScatterDisplay {
-    empties: bool,
-    mode : ScatterMode,
+enum_str!{
+    GlobalFilterMode,
+    (None,"none"),
+    (A,"a"),
+    (B,"b"),
+    (AORB,"a or b"),
 }
 
-impl std::fmt::Display for ScatterDisplay {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.mode {
-            ScatterMode::All => write!(f, "all entries"),
-            ScatterMode::Domain(d) => write!(f, "{} entries", d),
-            ScatterMode::Intent(i) => write!(f, "{} entries", i)
-    }
-}
-}
-
-enum ScatterMode {
-    All,
+enum GlobalFilterTarget{
     Domain(String),
     Intent(String),
+}
+
+impl std::fmt::Display for GlobalFilterTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            GlobalFilterTarget::Domain(d) => write!(f, "domain : {}", d),
+            GlobalFilterTarget::Intent(i) => write!(f, "intent : {}", i)
+        }
+    }
 }
 
 struct GraphDisplay {
@@ -122,6 +124,8 @@ pub enum Msg {
     ToggleGold,
     ToggleLeft,
     ToggleRight,
+    UpdateGlobalFilterMode(ChangeData),
+    UpdateGlobalFilterTarget(ChangeData),
 }
 
 impl Component for App {
@@ -133,8 +137,7 @@ impl Component for App {
             fetching: false,
             //       ft: None,
             corpus: Corpus::empty(),
-            global: GlobalDisplay{gold:true, left:true,right:true},
-            scatter: ScatterDisplay{empties: true, mode: ScatterMode::All},
+            global: GlobalDisplay{gold:true, left:true,right:true, filter_mode:GlobalFilterMode::None, filter_target: GlobalFilterTarget::Domain("".to_string())},
             graph: GraphDisplay{opened: true},
             table: TableDisplay{opened: true, current_index: 0, page_size: 50, link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, operator: Operator::LTE, level: AnnotationComparison::SameValues},
             task: None,
@@ -149,6 +152,28 @@ impl Component for App {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
+            Msg::UpdateGlobalFilterMode(cd) => {
+                if let ChangeData::Select(se) = cd {
+                    self.global.filter_mode = GlobalFilterMode::from_str(&se.value()).unwrap();
+                }
+            }
+
+            Msg::UpdateGlobalFilterTarget(cd) => {
+                let mut domains = self.corpus.intent_mapping.val.values().collect::<Vec<&String>>();
+                let mut intents = self.corpus.intent_mapping.val.keys().collect::<Vec<&String>>();
+
+                if let ChangeData::Select(se) = cd {
+                    let s = &se.value();
+                    if domains.contains(&s) {
+                        self.global.filter_target = GlobalFilterTarget::Domain(s.clone());
+                    }
+                    if intents.contains(&s) {
+                        self.global.filter_target = GlobalFilterTarget::Intent(s.clone());
+                    }
+                }
+            }
+
+
             Msg::ToggleGold => {
                 self.global.gold= !self.global.gold;
             }
@@ -288,14 +313,14 @@ impl Component for App {
                         Msg::File(file.get(0).unwrap())
                     } else { Msg::NoOp}
                 })/>
+
                 <button onclick=self.link.callback(|x| Msg::ToggleGraph) selected={self.graph.opened}>{if self.graph.opened {"✓ "} else {""}}{"📊"}</button>
-                <button onclick=self.link.callback(|x| Msg::ToggleTable) selected={self.table.opened}>{if self.table.opened {"✓ "} else {""}}{"📔"}</button>
-                <button onclick=self.link.callback(|x| Msg::ToggleGold)>{if self.global.gold {"✓ "} else {""}}{"Gold"}</button>
-                <button onclick=self.link.callback(|x| Msg::ToggleLeft)>{if self.global.left {"✓ "} else {""}}{"Left"}</button>
-                <button onclick=self.link.callback(|x| Msg::ToggleRight)>{if self.global.right {"✓ "} else {""}}{"Right"}</button>
+                    <button onclick=self.link.callback(|x| Msg::ToggleTable) selected={self.table.opened}>{if self.table.opened {"✓ "} else {""}}{"📔"}</button>
+                    <button onclick=self.link.callback(|x| Msg::ToggleGold)>{if self.global.gold {"✓ "} else {""}}{"Gold"}</button>
+                    <button onclick=self.link.callback(|x| Msg::ToggleLeft)>{if self.global.left {"✓ "} else {""}}{"Left"}</button>
+                    <button onclick=self.link.callback(|x| Msg::ToggleRight)>{if self.global.right {"✓ "} else {""}}{"Right"}</button>
 
-
-
+                    <span>{"global filter : "}{self.display_global_filter()}</span>
                     {if self.graph.opened {self.graph.display(&self)} else {html!{}}}
                 {if self.table.opened {self.table.display(&self)} else {html!{}}}
                 </>}
@@ -306,6 +331,40 @@ impl Component for App {
     fn change(&mut self, _: <Self as yew::html::Component>::Properties) -> bool {
         false
     }
+
+}
+
+impl App {
+    fn display_global_filter(&self) -> Html {
+        let mut domains = self.corpus.intent_mapping.val.values().collect::<Vec<&String>>();
+        domains.sort_unstable();
+        domains.dedup();
+        let mut intents = self.corpus.intent_mapping.val.keys().collect::<Vec<&String>>();
+        intents.sort_unstable();
+        intents.dedup();
+
+        html!{<>
+            <select onchange=self.link.callback(|c| {Msg::UpdateGlobalFilterMode(c)})>
+            { for GlobalFilterMode::iterator().map( |v| {
+                                                            html!{<option value=GlobalFilterMode::as_str(v) selected= self.global.filter_mode == *v  >{GlobalFilterMode::as_str(v)}</option>}
+                                                        })}
+            </select>
+            {if let GlobalFilterMode::None = self.global.filter_mode {html!{}} else {html!{
+                                                                                              <select onchange=self.link.callback(|c| {Msg::UpdateGlobalFilterTarget(c)})>
+                                                                                              { for domains.iter().map( |d| {
+                                                                                                                                html!{<option value=d selected= let GlobalFilterTarget::Domain(d)  = &self.global.filter_target >{d}</option>}
+                                                                                                                            })}
+                                                                                              { for intents.iter().map( |i| {
+                                                                                                                                html!{<option value=i selected= let GlobalFilterTarget::Intent(i)  = &self.global.filter_target >{i}</option>}
+                                                                                                                            })}
+
+
+                                                                                              </select>}}}
+            </>
+        }
+
+    }
+
 }
 
 
@@ -333,7 +392,7 @@ impl GraphDisplay {
                 {html!{<td>{self.display_pie(&app.corpus, CompareList::GoldVSRight)}</td>}} else {html!{<td/>}}}
             {if app.global.left && app.global.right
                 {html!{<td>{self.display_pie(&app.corpus, CompareList::LeftVSRight)}</td>}} else {html!{<td/>}}}
-                </tr>
+            </tr>
                 </table>
         }
     }
@@ -456,12 +515,12 @@ impl TableDisplay {
                 <th>{self.display_header(TableField::Text)}</th>
                 <th>{self.display_header(TableField::Count)}</th>
                 {if app.global.gold {html!{
-                <th>{self.display_header(TableField::Gold)}</th>}} else {html!{<th/>}}}
-                {if app.global.left {html!{
-                <th>{self.display_header(TableField::Left)}</th>}} else {html!{<th/>}}}
-                {if app.global.right {html!{
-                <th>{self.display_header(TableField::Right)}</th>}} else {html!{<th/>}}}
-                </tr>
+                                              <th>{self.display_header(TableField::Gold)}</th>}} else {html!{<th/>}}}
+            {if app.global.left {html!{
+                                          <th>{self.display_header(TableField::Left)}</th>}} else {html!{<th/>}}}
+            {if app.global.right {html!{
+                                           <th>{self.display_header(TableField::Right)}</th>}} else {html!{<th/>}}}
+            </tr>
                 </thead>
                 <tbody>
                 {for current_case_page.iter().map(|c| {self.display_case(&c, app)})}
@@ -474,18 +533,29 @@ impl TableDisplay {
         }
     }
 
+    fn display_global_filter_infos(&self, app: &App) -> Html {
+        if let GlobalFilterMode::None = app.global.filter_mode {
+            html!{}
+        } else {
+            html!{<span>
+                {"Limited to : "}{GlobalFilterMode::as_str(&app.global.filter_mode)}{" containing "}{&app.global.filter_target}
+                </span>
+            }
+        }
+    }
+
     fn display_filterbar(&self, cases: &[Case], app: &App) -> Html {
         html!{
             <>
-            <tr style="background-color:lightgrey;"><th colspan="6"><span>{&app.scatter}</span><span>{self.count_sentences(&cases)}</span></th></tr>
-            <tr style="background-color:lightgrey;">
+                <tr style="background-color:lightgrey;"><th colspan="6"><span>{self.count_sentences(&cases)}</span>{self.display_global_filter_infos(app)}</th></tr>
+                <tr style="background-color:lightgrey;">
                 <th colspan="6"><span>{"text filter : "}</span><input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/>
                 <span>{ "comparison mode : "}</span>
-            <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
-            {if app.global.gold && app.global.left 
-                {html!{<option value=CompareList::as_str(&CompareList::GoldVSLeft) selected = self.compare == CompareList::GoldVSLeft>{CompareList::as_str(&CompareList::GoldVSLeft)}</option>}}
-                else {html!{}}
-            }
+                <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
+                {if app.global.gold && app.global.left 
+                    {html!{<option value=CompareList::as_str(&CompareList::GoldVSLeft) selected = self.compare == CompareList::GoldVSLeft>{CompareList::as_str(&CompareList::GoldVSLeft)}</option>}}
+                    else {html!{}}
+                }
             {if app.global.gold && app.global.right 
                 {html!{<option value=CompareList::as_str(&CompareList::GoldVSRight) selected = self.compare == CompareList::GoldVSRight>{CompareList::as_str(&CompareList::GoldVSRight)}</option>}}
                 else {html!{}}
@@ -570,11 +640,11 @@ impl TableDisplay {
                 <td style="text-align:center">{&case.count}</td>
                 {if {app.global.gold}
                     {html!{<td>{self.display_annotations(&case.gold)}</td>}} else {html!{<td/>}}}
-                {if {app.global.left}
-                    {html!{<td>{self.display_annotations(&case.left)}</td>}} else {html!{<td/>}}}
-                {if {app.global.right}
-                    {html!{<td>{self.display_annotations(&case.right)}</td>}} else {html!{<td/>}}}
-                </tr>
+            {if {app.global.left}
+                {html!{<td>{self.display_annotations(&case.left)}</td>}} else {html!{<td/>}}}
+            {if {app.global.right}
+                {html!{<td>{self.display_annotations(&case.right)}</td>}} else {html!{<td/>}}}
+            </tr>
         }
     }
 
