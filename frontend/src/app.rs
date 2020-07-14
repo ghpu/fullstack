@@ -41,6 +41,7 @@ enum_str!{
     (AORB,"a or b"),
 }
 
+#[derive(PartialEq,Eq)]
 enum GlobalFilterTarget{
     Domain(String),
     Intent(String),
@@ -164,11 +165,11 @@ impl Component for App {
 
                 if let ChangeData::Select(se) = cd {
                     let s = &se.value();
-                    if domains.contains(&s) {
-                        self.global.filter_target = GlobalFilterTarget::Domain(s.clone());
+                    if &s[0..2]=="d:" {
+                        self.global.filter_target = GlobalFilterTarget::Domain(s[2..].to_string());
                     }
-                    if intents.contains(&s) {
-                        self.global.filter_target = GlobalFilterTarget::Intent(s.clone());
+                    if &s[0..2]=="i:" {
+                        self.global.filter_target = GlobalFilterTarget::Intent(s[2..].to_string());
                     }
                 }
             }
@@ -386,10 +387,10 @@ impl App {
             {if let GlobalFilterMode::None = self.global.filter_mode {html!{}} else {html!{
                                                                                               <select onchange=self.link.callback(|c| {Msg::UpdateGlobalFilterTarget(c)})>
                                                                                               { for domains.iter().map( |d| {
-                                                                                                                                html!{<option value=d selected= let GlobalFilterTarget::Domain(d)  = &self.global.filter_target >{d}</option>}
+                                                                                                                                html!{<option value="d:".to_string()+d selected= GlobalFilterTarget::Domain(d.to_string())  == self.global.filter_target >{d}</option>}
                                                                                                                             })}
                                                                                               { for intents.iter().map( |i| {
-                                                                                                                                html!{<option value=i selected= let GlobalFilterTarget::Intent(i)  = &self.global.filter_target >{i}</option>}
+                                                                                                                                html!{<option value="i:".to_string()+i selected= GlobalFilterTarget::Intent(i.to_string())  == self.global.filter_target >{i}</option>}
                                                                                                                             })}
 
 
