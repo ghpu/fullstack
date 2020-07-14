@@ -245,6 +245,7 @@ impl Component for App {
             Msg::FetchReady(response) => {
                 self.fetching = false;
                 self.corpus = response.unwrap_or(Corpus::empty()).clone();
+                self.global.filter_target = GlobalFilterTarget::Domain(self.corpus.intent_mapping.val.values().nth(0).unwrap().to_string());
                 // add domain to all annotations
                 for c in 0..self.corpus.cases.len() {
                     for a in 0..self.corpus.cases[c].gold.len() {
