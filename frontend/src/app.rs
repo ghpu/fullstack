@@ -73,9 +73,7 @@ struct TableDisplay {
     sort_criterion: (TableField,SortDirection),
     filter: Option<String>,
     debounce_handle: yew::services::timeout::TimeoutTask,
-    compare: CompareList,
-    operator : Operator,
-    level: AnnotationComparison,
+    compare: Filter,
 }
 
 enum_str! {
@@ -145,7 +143,7 @@ impl Component for App {
             corpus: Corpus::empty(),
             global: GlobalDisplay{gold:true, left:true,right:true, },
             graph: GraphDisplay{opened: true, filter: Filter::LimitFilter(GlobalFilterMode::None, GlobalFilterTarget::Domain("".to_string()))},
-            table: TableDisplay{opened: true, current_index: 0, page_size: 50, link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, operator: Operator::LTE, level: AnnotationComparison::SameValues},
+            table: TableDisplay{opened: true, current_index: 0, page_size: 50, link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: Filter::CompareFilter(CompareList::GoldVSLeft, Operator::LTE, AnnotationComparison::SameValues)},
             task: None,
         }
     }
@@ -214,17 +212,23 @@ impl Component for App {
             }
             Msg::UpdateCompare(cd) => {
                 if let ChangeData::Select(se) = cd {
-                    self.table.compare = CompareList::from_str(&se.value()).unwrap();
+                    if let Filter::CompareFilter(cl,o,ac) = self.table.compare.clone(){
+                    self.table.compare = Filter::CompareFilter(CompareList::from_str(&se.value()).unwrap(), o,ac);
+                }
                 }
             }
             Msg::UpdateOperator(cd) => {
                 if let ChangeData::Select(se) = cd {
-                    self.table.operator = Operator::from_str(&se.value()).unwrap();
+                    if let Filter::CompareFilter(cl,o,ac) = self.table.compare.clone(){
+                    self.table.compare = Filter::CompareFilter(cl,Operator::from_str(&se.value()).unwrap(),ac);
+                    }
                 }
             }
             Msg::UpdateLevel(cd) => {
                 if let ChangeData::Select(se) = cd {
-                    self.table.level = AnnotationComparison::from_str(&se.value()).unwrap();
+                    if let Filter::CompareFilter(cl,o,ac) = self.table.compare.clone(){
+                    self.table.compare = Filter::CompareFilter(cl,o,AnnotationComparison::from_str(&se.value()).unwrap());
+                    }
                 }
             }
             Msg::UpdateFilter(filter_string) => { 
@@ -550,12 +554,16 @@ impl TableDisplay {
     }
 
     fn filter_comparison(&self, c: &Case) -> bool {
-        let d= match self.compare {CompareList::GoldVSLeft => c.gold_vs_left, CompareList::GoldVSRight => c.gold_vs_right, CompareList::LeftVSRight => c.left_vs_right };
-        match self.operator {
-            Operator::LTE => d <= self.level,
-            Operator::GTE => d >= self.level,
-            Operator::EQ => d == self.level,
-            Operator::NEQ => d != self.level,
+        match &self.compare {
+            Filter::CompareFilter(cl,o,ac) => {
+            let d = match cl {CompareList::GoldVSLeft => c.gold_vs_left, CompareList::GoldVSRight => c.gold_vs_right, CompareList::LeftVSRight => c.left_vs_right };
+        match o {
+            Operator::LTE => d <= *ac,
+            Operator::GTE => d >= *ac,
+            Operator::EQ => d == *ac,
+            Operator::NEQ => d != *ac,
+        }}
+            Filter::LimitFilter(f,t) => true
         }
     }
 
@@ -607,28 +615,28 @@ impl TableDisplay {
                 <span>{ "comparison mode : "}</span>
                 <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
                 {if app.global.gold && app.global.left 
-                    {html!{<option value=CompareList::as_str(&CompareList::GoldVSLeft) selected = self.compare == CompareList::GoldVSLeft>{CompareList::as_str(&CompareList::GoldVSLeft)}</option>}}
+                    {html!{<option value=CompareList::as_str(&CompareList::GoldVSLeft) selected = { if let Filter::CompareFilter(cl,o,ac) = self.compare { cl == CompareList::GoldVSLeft} else {false}} >{CompareList::as_str(&CompareList::GoldVSLeft)}</option>}}
                     else {html!{}}
                 }
             {if app.global.gold && app.global.right 
-                {html!{<option value=CompareList::as_str(&CompareList::GoldVSRight) selected = self.compare == CompareList::GoldVSRight>{CompareList::as_str(&CompareList::GoldVSRight)}</option>}}
+                {html!{<option value=CompareList::as_str(&CompareList::GoldVSRight) selected = { if let Filter::CompareFilter(cl,o,ac) = self.compare { cl == CompareList::GoldVSRight} else {false}} > {CompareList::as_str(&CompareList::GoldVSRight)}</option>}}
                 else {html!{}}
             }
             {if app.global.left && app.global.right
-                {html!{<option value=CompareList::as_str(&CompareList::LeftVSRight) selected = self.compare == CompareList::LeftVSRight>{CompareList::as_str(&CompareList::LeftVSRight)}</option>}}
+                {html!{<option value=CompareList::as_str(&CompareList::LeftVSRight) selected = { if let Filter::CompareFilter(cl,o,ac) = self.compare { cl == CompareList::LeftVSRight} else {false}} >{CompareList::as_str(&CompareList::LeftVSRight)}</option>}}
                 else {html!{}}
             }
             </select>
 
                 <select onchange=self.link_ref.callback(|c| {Msg::UpdateOperator(c)})>
                 { for Operator::iterator().map( |v| {
-                                                        html!{<option value=Operator::as_str(v) selected= self.operator == *v  >{Operator::as_str(v)}</option>}
+                                                        html!{<option value=Operator::as_str(v) selected= { if let Filter::CompareFilter(cl,o,ac) = self.compare {o == *v} else {false} }  >{Operator::as_str(v)}</option>}
                                                     })}
             </select>
 
                 <select onchange=self.link_ref.callback(|c| {Msg::UpdateLevel(c)})>
                 { for AnnotationComparison::iterator().map( |v| {
-                                                                    html!{<option value=AnnotationComparison::as_str(v) selected= self.level == *v  >{AnnotationComparison::as_str(v)}</option>}
+                                                                    html!{<option value=AnnotationComparison::as_str(v) selected= { if let Filter::CompareFilter(cl,o,ac) = self.compare { ac == *v} else { false}}  >{AnnotationComparison::as_str(v)}</option>}
                                                                 })}
             </select>
 
