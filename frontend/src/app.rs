@@ -29,7 +29,6 @@ struct GlobalDisplay {
     gold: bool,
     left: bool,
     right:bool,
-    filter: Filter,
 }
 
 #[derive(Clone)]
@@ -63,6 +62,7 @@ impl std::fmt::Display for GlobalFilterTarget {
 
 struct GraphDisplay {
     opened: bool,
+    filter: Filter,
 }
 
 struct TableDisplay {
@@ -143,8 +143,8 @@ impl Component for App {
             fetching: false,
             //       ft: None,
             corpus: Corpus::empty(),
-            global: GlobalDisplay{gold:true, left:true,right:true, filter: Filter::LimitFilter(GlobalFilterMode::None, GlobalFilterTarget::Domain("".to_string()))},
-            graph: GraphDisplay{opened: true},
+            global: GlobalDisplay{gold:true, left:true,right:true, },
+            graph: GraphDisplay{opened: true, filter: Filter::LimitFilter(GlobalFilterMode::None, GlobalFilterTarget::Domain("".to_string()))},
             table: TableDisplay{opened: true, current_index: 0, page_size: 50, link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), compare: CompareList::GoldVSLeft, operator: Operator::LTE, level: AnnotationComparison::SameValues},
             task: None,
         }
@@ -161,8 +161,8 @@ impl Component for App {
             Msg::UpdateGlobalFilterMode(cd) => {
                 if let ChangeData::Select(se) = cd {
                     let filter_mode = GlobalFilterMode::from_str(&se.value()).unwrap();
-                    if let Filter::LimitFilter(f,t) = self.global.filter.clone(){
-                    self.global.filter = Filter::LimitFilter(filter_mode, t);
+                    if let Filter::LimitFilter(f,t) = self.graph.filter.clone(){
+                    self.graph.filter = Filter::LimitFilter(filter_mode, t);
                     }
                 }
             }
@@ -173,12 +173,12 @@ impl Component for App {
 
                 if let ChangeData::Select(se) = cd {
                     let s = &se.value();
-                    if let Filter::LimitFilter(f,t) = self.global.filter.clone(){
+                    if let Filter::LimitFilter(f,t) = self.graph.filter.clone(){
                     if &s[0..2]=="d:" {
-                        self.global.filter = Filter::LimitFilter(f,GlobalFilterTarget::Domain(s[2..].to_string()));
+                        self.graph.filter = Filter::LimitFilter(f,GlobalFilterTarget::Domain(s[2..].to_string()));
                     }
                     if &s[0..2]=="i:" {
-                        self.global.filter = Filter::LimitFilter(f,GlobalFilterTarget::Intent(s[2..].to_string()));
+                        self.graph.filter = Filter::LimitFilter(f,GlobalFilterTarget::Intent(s[2..].to_string()));
                     }
                     }
                 }
@@ -256,7 +256,7 @@ impl Component for App {
                 self.fetching = false;
                 self.corpus = response.unwrap_or(Corpus::empty()).clone();
                 let filter_target = GlobalFilterTarget::Domain(self.corpus.intent_mapping.val.values().nth(0).unwrap().to_string());
-                self.global.filter = Filter::LimitFilter(GlobalFilterMode::None, filter_target);
+                self.graph.filter = Filter::LimitFilter(GlobalFilterMode::None, filter_target);
                 // add domain to all annotations
                 for c in 0..self.corpus.cases.len() {
                     for a in 0..self.corpus.cases[c].gold.len() {
@@ -350,7 +350,7 @@ impl Component for App {
 impl App {
 
     fn target_filter(&self, what: &Annotation) -> bool {
-        if let Filter::LimitFilter(f,t) = self.global.filter.clone() {
+        if let Filter::LimitFilter(f,t) = self.graph.filter.clone() {
         match t {
             GlobalFilterTarget::Domain(d) => what.domain==*d,
             GlobalFilterTarget::Intent(i) => what.intent==*i,
@@ -366,7 +366,7 @@ impl App {
             CompareList::GoldVSRight => (&what.gold, &what.right),
             CompareList::LeftVSRight => (&what.left, &what.right),
         };
-        if let Filter::LimitFilter(f,t) = self.global.filter.clone() {
+        if let Filter::LimitFilter(f,t) = self.graph.filter.clone() {
         match f  {
             GlobalFilterMode::None => true,
             GlobalFilterMode::A  =>  a.iter().any(|x| self.target_filter(x) ),
@@ -376,7 +376,7 @@ impl App {
         } else { true }
     }
     fn display_global_filter_infos(&self) -> Html {
-        if let Filter::LimitFilter(f,t) = self.global.filter.clone() {
+        if let Filter::LimitFilter(f,t) = self.graph.filter.clone() {
         if let GlobalFilterMode::None = f {
             html!{}
         } else {
@@ -395,7 +395,7 @@ impl App {
         let mut intents = self.corpus.intent_mapping.val.keys().collect::<Vec<&String>>();
         intents.sort_unstable();
         intents.dedup();
-        if let Filter::LimitFilter(f,t) = self.global.filter.clone() {
+        if let Filter::LimitFilter(f,t) = self.graph.filter.clone() {
 
         html!{<>
             <select onchange=self.link.callback(|c| {Msg::UpdateGlobalFilterMode(c)})>
@@ -456,7 +456,7 @@ impl GraphDisplay {
         let radius: f32 = 70.;
         let mut hm : HashMap<AnnotationComparison,usize> = HashMap::new();
         let mut current_cases = corpus.cases.to_vec();
-        if let Filter::LimitFilter(f,t) = app.global.filter.clone(){
+        if let Filter::LimitFilter(f,t) = self.filter.clone(){
 
         current_cases = match f {
             GlobalFilterMode::None => corpus.cases.to_vec(),
