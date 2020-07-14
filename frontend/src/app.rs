@@ -354,9 +354,9 @@ impl App {
 
         match self.global.filter_mode  {
             GlobalFilterMode::None => true,
-            GlobalFilterMode::A  =>  a.iter().any(|a| self.target_filter(a) ),
-            GlobalFilterMode::B => b.iter().any(|b| self.target_filter(b) ),
-            GlobalFilterMode::AORB => a.iter().any(|a| self.target_filter(a)) || b.iter().any(|b| self.target_filter(b)),
+            GlobalFilterMode::A  =>  a.iter().any(|x| self.target_filter(x) ),
+            GlobalFilterMode::B => b.iter().any(|x| self.target_filter(x) ),
+            GlobalFilterMode::AORB => a.iter().any(|x| self.target_filter(x)) || b.iter().any(|x| self.target_filter(x)),
         }
     }
     fn display_global_filter_infos(&self) -> Html {
@@ -439,9 +439,7 @@ impl GraphDisplay {
 
         current_cases = match app.global.filter_mode {
             GlobalFilterMode::None => corpus.cases.to_vec(),
-            GlobalFilterMode::A => current_cases.into_iter().filter(|x| app.limit_filter(x, &mode)).collect::<Vec<Case>>(),
-            GlobalFilterMode::B => corpus.cases.to_vec(),
-            GlobalFilterMode::AORB => corpus.cases.to_vec(),
+            _ => current_cases.into_iter().filter(|x| app.limit_filter(x, &mode)).collect::<Vec<Case>>(),
         };
 
         for i in 0..current_cases.len() {
