@@ -325,21 +325,26 @@ impl Component for App {
     fn view(&self) -> Html {
         html! {
             if self.fetching {html!{<p>{"Please wait, loading..."}</p>}} else {
-                html!{<><input type="file" multiple=false onchange=self.link.callback(move |value|{
-                    if let ChangeData::Files(file) = value {
-                        Msg::File(file.get(0).unwrap())
-                    } else { Msg::NoOp}
-                })/>
+                html!{<>
+                    <div  style="background-color:lightgrey; padding:0">
+                        <span><b>{"Case Analysis"}</b></span>
+                        <input type="file" multiple=false onchange=self.link.callback(move |value|{
+                            if let ChangeData::Files(file) = value {
+                                Msg::File(file.get(0).unwrap())
+                            } else { Msg::NoOp}
+                        })/>
 
-                <button onclick=self.link.callback(|x| Msg::ToggleGraph) selected={self.graph.opened}>{if self.graph.opened {"✓ "} else {""}}{"📊"}</button>
-                    <button onclick=self.link.callback(|x| Msg::ToggleTable) selected={self.table.opened}>{if self.table.opened {"✓ "} else {""}}{"📔"}</button>
-                    <button onclick=self.link.callback(|x| Msg::ToggleGold)>{if self.global.gold {"✓ "} else {""}}{"Gold"}</button>
-                    <button onclick=self.link.callback(|x| Msg::ToggleLeft)>{if self.global.left {"✓ "} else {""}}{"Left"}</button>
-                    <button onclick=self.link.callback(|x| Msg::ToggleRight)>{if self.global.right {"✓ "} else {""}}{"Right"}</button>
+                    <button onclick=self.link.callback(|x| Msg::ToggleGraph) selected={self.graph.opened}>{if self.graph.opened {"✓ "} else {""}}{"📊"}</button>
+                        <button onclick=self.link.callback(|x| Msg::ToggleTable) selected={self.table.opened}>{if self.table.opened {"✓ "} else {""}}{"📔"}</button>
+                        <button onclick=self.link.callback(|x| Msg::ToggleGold)>{if self.global.gold {"✓ "} else {""}}{"Gold"}</button>
+                        <button onclick=self.link.callback(|x| Msg::ToggleLeft)>{if self.global.left {"✓ "} else {""}}{"Left"}</button>
+                        <button onclick=self.link.callback(|x| Msg::ToggleRight)>{if self.global.right {"✓ "} else {""}}{"Right"}</button>
+                        </div>
 
-                    {if self.graph.opened {self.graph.display(&self)} else {html!{}}}
-                {if self.table.opened {self.table.display(&self)} else {html!{}}}
-                </>}
+                        {if self.graph.opened {self.graph.display(&self)} else {html!{}}}
+                    {if self.table.opened {self.table.display(&self)} else {html!{}}}
+                    </>
+                }
             }
         }
     }
