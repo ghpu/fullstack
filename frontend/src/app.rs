@@ -475,10 +475,20 @@ impl GraphDisplay {
                 {html!{<td>{self.display_pie(&app.corpus, CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}
             {if app.global.left && app.global.right
                 {html!{<td>{self.display_pie(&app.corpus, CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}
-            </tr></tbody>
+            </tr>
+            <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(&app.corpus, CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}</tr>
+            <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(&app.corpus, CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
+            <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(&app.corpus, CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
+                </tbody>
                 </table>
         }
     }
+
+    fn display_scatter(&self, corpus: &Corpus, mode: CompareList, app: &App) -> Html {
+        html!{}
+    }
+
+
     fn display_pie(&self, corpus: &Corpus, mode: CompareList, app: &App) -> Html {
         let pi: f32 = 3.14159265358979;
         let radius: f32 = 70.;
