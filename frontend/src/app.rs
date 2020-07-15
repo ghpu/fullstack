@@ -70,7 +70,8 @@ struct TableDisplay {
     debounce_handle: yew::services::timeout::TimeoutTask,
     compare_mode:CompareList,
     compare_operator:Operator,
-    compare_level:AnnotationComparison
+    compare_level:AnnotationComparison,
+    compare_contains:GlobalFilterTarget,
 }
 
 enum_str! {
@@ -78,6 +79,13 @@ enum_str! {
     (GoldVSLeft,"gold vs left"),
     (GoldVSRight,"gold vs right"),
     (LeftVSRight,"left vs right"),
+    (Gold,"gold"),
+    (Left,"left"),
+    (Right,"right"),
+    (GoldOrLeft, "gold or left"),
+    (GoldOrRight, "gold or right"),
+    (LeftOrRight, "left or right"),
+    (GoldOrLeftOrRight, "gold, left or right"),
 }
 
 enum_str! {
@@ -141,7 +149,7 @@ impl Component for App {
             global: GlobalDisplay{gold:true, left:true,right:true, },
             graph: GraphDisplay{opened: true, filter_mode: GlobalFilterMode::None, filter_target: GlobalFilterTarget::Domain("".to_string())},
             table: TableDisplay{opened: true, current_index: 0, page_size: 50, link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), 
-                compare_mode : CompareList::GoldVSLeft, compare_operator: Operator::LTE, compare_level: AnnotationComparison::SameValues},
+                compare_mode : CompareList::GoldVSLeft, compare_operator: Operator::LTE, compare_level: AnnotationComparison::SameValues, compare_contains: GlobalFilterTarget::Domain("".to_string())},
                 task: None,
         }
     }
@@ -245,7 +253,8 @@ impl Component for App {
                 self.corpus = response.unwrap_or(Corpus::empty()).clone();
                 let filter_target = GlobalFilterTarget::Domain(self.corpus.intent_mapping.val.values().nth(0).unwrap().to_string());
                 self.graph.filter_mode = GlobalFilterMode::None;
-                self.graph.filter_target =filter_target;
+                self.graph.filter_target =filter_target.clone();
+                self.table.compare_contains =filter_target;
                 // add domain to all annotations
                 for c in 0..self.corpus.cases.len() {
                     for a in 0..self.corpus.cases[c].gold.len() {
@@ -354,6 +363,7 @@ impl App {
             CompareList::GoldVSLeft => (&what.gold, &what.left),
             CompareList::GoldVSRight => (&what.gold, &what.right),
             CompareList::LeftVSRight => (&what.left, &what.right),
+            _ => panic!("not possible")
         };
         match self.graph.filter_mode  {
             GlobalFilterMode::None => true,
@@ -451,7 +461,8 @@ impl GraphDisplay {
                 match mode {
                     CompareList::GoldVSLeft => current_cases[i].gold_vs_left,
                     CompareList::GoldVSRight => current_cases[i].gold_vs_right,
-                    CompareList::LeftVSRight => current_cases[i].left_vs_right
+                    CompareList::LeftVSRight => current_cases[i].left_vs_right,
+                    _ => panic!("not possible"),
                 };
             let count = hm.entry(what).or_insert(0);
             *count +=current_cases[i].count;
@@ -549,13 +560,29 @@ impl TableDisplay {
     }
 
     fn filter_comparison(&self, c: &Case) -> bool {
-        let d = match &self.compare_mode {CompareList::GoldVSLeft => c.gold_vs_left, CompareList::GoldVSRight => c.gold_vs_right, CompareList::LeftVSRight => c.left_vs_right };
-        match &self.compare_operator {
-            Operator::LTE => d <= self.compare_level,
-            Operator::GTE => d >= self.compare_level,
-            Operator::EQ => d == self.compare_level,
-            Operator::NEQ => d != self.compare_level,
+        match &self.compare_mode {
+            CompareList::GoldVSLeft | CompareList::GoldVSRight | CompareList::LeftVSRight => {
+                let d = match &self.compare_mode {
+                    CompareList::GoldVSLeft => c.gold_vs_left, 
+                    CompareList::GoldVSRight => c.gold_vs_right, 
+                    CompareList::LeftVSRight => c.left_vs_right,
+                    _ => panic!("not possible")
+                };
+
+                match &self.compare_operator {
+                    Operator::LTE => d <= self.compare_level,
+                    Operator::GTE => d >= self.compare_level,
+                    Operator::EQ => d == self.compare_level,
+                    Operator::NEQ => d != self.compare_level,
+                }
+
+            },
+
+            _ => true, // Gold, Right, Left, GoldOrLeft...
         }
+
+
+
     }
 
     fn display(&self, app: &App) -> Html {
@@ -617,21 +644,87 @@ impl TableDisplay {
                 {html!{<option value=CompareList::as_str(&CompareList::LeftVSRight) selected = self.compare_mode == CompareList::LeftVSRight >{CompareList::as_str(&CompareList::LeftVSRight)}</option>}}
                 else {html!{}}
             }
+            {if app.global.gold
+                {html!{<option value=CompareList::as_str(&CompareList::Gold) selected = self.compare_mode == CompareList::Gold>{CompareList::as_str(&CompareList::Gold)}</option>}}
+                else {html!{}}
+            }
+            {if app.global.left
+                {html!{<option value=CompareList::as_str(&CompareList::Left) selected = self.compare_mode == CompareList::Left>{CompareList::as_str(&CompareList::Left)}</option>}}
+                else {html!{}}
+            }
+            {if app.global.right
+                {html!{<option value=CompareList::as_str(&CompareList::Right) selected = self.compare_mode == CompareList::Right>{CompareList::as_str(&CompareList::Right)}</option>}}
+                else {html!{}}
+            }
+
+            {if app.global.gold && app.global.left
+                {html!{<option value=CompareList::as_str(&CompareList::GoldOrLeft) selected = self.compare_mode == CompareList::GoldOrLeft>{CompareList::as_str(&CompareList::GoldOrLeft)}</option>}}
+                else {html!{}}
+            }
+
+            {if app.global.gold && app.global.right
+                {html!{<option value=CompareList::as_str(&CompareList::GoldOrRight) selected = self.compare_mode == CompareList::GoldOrRight>{CompareList::as_str(&CompareList::GoldOrRight)}</option>}}
+                else {html!{}}
+            }
+
+            {if app.global.left && app.global.right
+                {html!{<option value=CompareList::as_str(&CompareList::LeftOrRight) selected = self.compare_mode == CompareList::LeftOrRight>{CompareList::as_str(&CompareList::LeftOrRight)}</option>}}
+                else {html!{}}
+            }
+
+            {if app.global.gold && app.global.left && app.global.right
+                {html!{<option value=CompareList::as_str(&CompareList::GoldOrLeftOrRight) selected = self.compare_mode == CompareList::GoldOrLeftOrRight>{CompareList::as_str(&CompareList::GoldOrLeftOrRight)}</option>}}
+                else {html!{}}
+            }
+
             </select>
 
-                <select onchange=self.link_ref.callback(|c| {Msg::UpdateOperator(c)})>
-                { for Operator::iterator().map( |v| {
-                                                        html!{<option value=Operator::as_str(v) selected= self.compare_operator == *v  >{Operator::as_str(v)}</option>}
-                                                    })}
-            </select>
+            { match self.compare_mode {
+                                          CompareList::GoldVSLeft | CompareList::GoldVSRight | CompareList:: LeftVSRight =>
+                                              html!{
+                                                  <>
+                                                      <select onchange=self.link_ref.callback(|c| {Msg::UpdateOperator(c)})>
+                                                      { for Operator::iterator().map( |v| {
+                                                                                              html!{<option value=Operator::as_str(v) selected= self.compare_operator == *v  >{Operator::as_str(v)}</option>}
+                                                                                          })}
+                                                  </select>
 
-                <select onchange=self.link_ref.callback(|c| {Msg::UpdateLevel(c)})>
-                { for AnnotationComparison::iterator().map( |v| {
-                                                                    html!{<option value=AnnotationComparison::as_str(v) selected= self.compare_level == *v  >{AnnotationComparison::as_str(v)}</option>}
-                                                                })}
-            </select>
+                                                      <select onchange=self.link_ref.callback(|c| {Msg::UpdateLevel(c)})>
+                                                      { for AnnotationComparison::iterator().map( |v| {
+                                                                                                          html!{<option value=AnnotationComparison::as_str(v) selected= self.compare_level == *v  >{AnnotationComparison::as_str(v)}</option>}
+                                                                                                      })}
+                                                  </select></>
 
-                </th>
+                                              },
+
+                                          _ => {
+                                              let mut domains = app.corpus.intent_mapping.val.values().collect::<Vec<&String>>();
+                                              domains.sort_unstable();
+                                              domains.dedup();
+                                              let mut intents = app.corpus.intent_mapping.val.keys().collect::<Vec<&String>>();
+                                              intents.sort_unstable();
+                                              intents.dedup();
+                                              html!{
+
+                                                  <select onchange=self.link_ref.callback(|c| {Msg::UpdateGlobalFilterTarget(c)})>
+                                                  { for domains.iter().map( |d| {
+                                                                                    html!{<option value="d:".to_string()+d selected= GlobalFilterTarget::Domain(d.to_string())  == self.compare_contains >{d}</option>}
+                                                                                })}
+                                                  { for intents.iter().map( |i| {
+                                                                                    html!{<option value="i:".to_string()+i selected= GlobalFilterTarget::Intent(i.to_string())  == self.compare_contains >{i}</option>}
+                                                                                })}
+
+
+                                                  </select>
+                                              }
+
+                                          }
+
+
+
+                                      }}
+
+            </th>
                 </tr>
                 </>
         }
