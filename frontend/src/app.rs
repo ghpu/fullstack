@@ -475,7 +475,7 @@ impl GraphDisplay {
                     CompareList::LeftVSRight => current_cases[i].left_vs_right
                 };
             let count = hm.entry(what).or_insert(0);
-            *count +=1;
+            *count +=current_cases[i].count;
         }
 
         let sum = hm.values().fold(0, |acc, x| acc + x);
@@ -492,7 +492,7 @@ impl GraphDisplay {
                      ));
             color_index +=1;
             offset += length as f32 / (sum as f32);
-        }
+        };
 
         html!{<>
             <center><h3>{CompareList::as_str(&mode)}</h3></center>
@@ -506,7 +506,15 @@ impl GraphDisplay {
 
                                              })}
             </svg>
-            {for AnnotationComparison::iterator().map(|v| html!{<div>{format!("{} : {} ({:.2}%)",AnnotationComparison::as_str(v), hm.get(v).unwrap_or(&0)  ,  *hm.get(v).unwrap_or(&0) as f32 / (sum as f32) * 100.)}</div>})}
+            <table>
+            {for AnnotationComparison::iterator().map(|v| html!{
+                                                                   <tr>
+                                                                       <td>{AnnotationComparison::as_str(v)}</td>
+                                                                       <td>{hm.get(v).unwrap_or(&0)}</td>
+                                                                       <td>{format!("{:.2}%", *hm.get(v).unwrap_or(&0) as f32 / (sum as f32) * 100.)}</td>
+                                                                    </tr>})}
+            <tfoot><tr><td>{"total"}</td><td>{sum}</td><td></td></tr></tfoot>
+            </table>
             </>
         }
     }
