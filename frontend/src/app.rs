@@ -39,7 +39,7 @@ enum Filter {
 
 enum_str!{
     GlobalFilterMode,
-    (None,"none"),
+    (None,"no filter"),
     (A,"a"),
     (B,"b"),
     (AORB,"a or b"),
@@ -160,7 +160,7 @@ impl Component for App {
                 if let ChangeData::Select(se) = cd {
                     let filter_mode = GlobalFilterMode::from_str(&se.value()).unwrap();
                     if let Filter::LimitFilter(f,t) = self.graph.filter.clone(){
-                    self.graph.filter = Filter::LimitFilter(filter_mode, t);
+                        self.graph.filter = Filter::LimitFilter(filter_mode, t);
                     }
                 }
             }
@@ -172,12 +172,12 @@ impl Component for App {
                 if let ChangeData::Select(se) = cd {
                     let s = &se.value();
                     if let Filter::LimitFilter(f,t) = self.graph.filter.clone(){
-                    if &s[0..2]=="d:" {
-                        self.graph.filter = Filter::LimitFilter(f,GlobalFilterTarget::Domain(s[2..].to_string()));
-                    }
-                    if &s[0..2]=="i:" {
-                        self.graph.filter = Filter::LimitFilter(f,GlobalFilterTarget::Intent(s[2..].to_string()));
-                    }
+                        if &s[0..2]=="d:" {
+                            self.graph.filter = Filter::LimitFilter(f,GlobalFilterTarget::Domain(s[2..].to_string()));
+                        }
+                        if &s[0..2]=="i:" {
+                            self.graph.filter = Filter::LimitFilter(f,GlobalFilterTarget::Intent(s[2..].to_string()));
+                        }
                     }
                 }
             }
@@ -213,21 +213,21 @@ impl Component for App {
             Msg::UpdateCompare(cd) => {
                 if let ChangeData::Select(se) = cd {
                     if let Filter::CompareFilter(cl,o,ac) = self.table.compare.clone(){
-                    self.table.compare = Filter::CompareFilter(CompareList::from_str(&se.value()).unwrap(), o,ac);
-                }
+                        self.table.compare = Filter::CompareFilter(CompareList::from_str(&se.value()).unwrap(), o,ac);
+                    }
                 }
             }
             Msg::UpdateOperator(cd) => {
                 if let ChangeData::Select(se) = cd {
                     if let Filter::CompareFilter(cl,o,ac) = self.table.compare.clone(){
-                    self.table.compare = Filter::CompareFilter(cl,Operator::from_str(&se.value()).unwrap(),ac);
+                        self.table.compare = Filter::CompareFilter(cl,Operator::from_str(&se.value()).unwrap(),ac);
                     }
                 }
             }
             Msg::UpdateLevel(cd) => {
                 if let ChangeData::Select(se) = cd {
                     if let Filter::CompareFilter(cl,o,ac) = self.table.compare.clone(){
-                    self.table.compare = Filter::CompareFilter(cl,o,AnnotationComparison::from_str(&se.value()).unwrap());
+                        self.table.compare = Filter::CompareFilter(cl,o,AnnotationComparison::from_str(&se.value()).unwrap());
                     }
                 }
             }
@@ -337,7 +337,6 @@ impl Component for App {
                     <button onclick=self.link.callback(|x| Msg::ToggleLeft)>{if self.global.left {"✓ "} else {""}}{"Left"}</button>
                     <button onclick=self.link.callback(|x| Msg::ToggleRight)>{if self.global.right {"✓ "} else {""}}{"Right"}</button>
 
-                    <span>{"global filter : "}{self.display_global_filter()}</span>
                     {if self.graph.opened {self.graph.display(&self)} else {html!{}}}
                 {if self.table.opened {self.table.display(&self)} else {html!{}}}
                 </>}
@@ -355,11 +354,11 @@ impl App {
 
     fn target_filter(&self, what: &Annotation) -> bool {
         if let Filter::LimitFilter(f,t) = self.graph.filter.clone() {
-        match t {
-            GlobalFilterTarget::Domain(d) => what.domain==*d,
-            GlobalFilterTarget::Intent(i) => what.intent==*i,
+            match t {
+                GlobalFilterTarget::Domain(d) => what.domain==*d,
+                GlobalFilterTarget::Intent(i) => what.intent==*i,
 
-        }
+            }
         }
         else { true }
     }
@@ -371,24 +370,24 @@ impl App {
             CompareList::LeftVSRight => (&what.left, &what.right),
         };
         if let Filter::LimitFilter(f,t) = self.graph.filter.clone() {
-        match f  {
-            GlobalFilterMode::None => true,
-            GlobalFilterMode::A  =>  a.iter().any(|x| self.target_filter(x) ),
-            GlobalFilterMode::B => b.iter().any(|x| self.target_filter(x) ),
-            GlobalFilterMode::AORB => a.iter().any(|x| self.target_filter(x)) || b.iter().any(|x| self.target_filter(x)),
-        }
+            match f  {
+                GlobalFilterMode::None => true,
+                GlobalFilterMode::A  =>  a.iter().any(|x| self.target_filter(x) ),
+                GlobalFilterMode::B => b.iter().any(|x| self.target_filter(x) ),
+                GlobalFilterMode::AORB => a.iter().any(|x| self.target_filter(x)) || b.iter().any(|x| self.target_filter(x)),
+            }
         } else { true }
     }
     fn display_global_filter_infos(&self) -> Html {
         if let Filter::LimitFilter(f,t) = self.graph.filter.clone() {
-        if let GlobalFilterMode::None = f {
-            html!{}
-        } else {
-            html!{<span>
-                {"Limited to : "}{GlobalFilterMode::as_str(&f)}{" containing "}{t}
-                </span>
+            if let GlobalFilterMode::None = f {
+                html!{}
+            } else {
+                html!{<span>
+                    {"Limited to : "}{GlobalFilterMode::as_str(&f)}{" containing "}{t}
+                    </span>
+                }
             }
-        }
         } else {html!{}}
     }
 
@@ -401,25 +400,25 @@ impl App {
         intents.dedup();
         if let Filter::LimitFilter(f,t) = self.graph.filter.clone() {
 
-        html!{<>
-            <select onchange=self.link.callback(|c| {Msg::UpdateGlobalFilterMode(c)})>
-            { for GlobalFilterMode::iterator().map( |v| {
-                                                            html!{<option value=GlobalFilterMode::as_str(v) selected= f == *v  >{GlobalFilterMode::as_str(v)}</option>}
-                                                        })}
-            </select>
-            {if let GlobalFilterMode::None = f {html!{}} else {html!{
-                                                                                              <select onchange=self.link.callback(|c| {Msg::UpdateGlobalFilterTarget(c)})>
-                                                                                              { for domains.iter().map( |d| {
-                                                                                                                                html!{<option value="d:".to_string()+d selected= GlobalFilterTarget::Domain(d.to_string())  == t >{d}</option>}
-                                                                                                                            })}
-                                                                                              { for intents.iter().map( |i| {
-                                                                                                                                html!{<option value="i:".to_string()+i selected= GlobalFilterTarget::Intent(i.to_string())  == t >{i}</option>}
-                                                                                                                            })}
+            html!{<>
+                <select onchange=self.link.callback(|c| {Msg::UpdateGlobalFilterMode(c)})>
+                { for GlobalFilterMode::iterator().map( |v| {
+                                                                html!{<option value=GlobalFilterMode::as_str(v) selected= f == *v  >{GlobalFilterMode::as_str(v)}</option>}
+                                                            })}
+                </select>
+                {if let GlobalFilterMode::None = f {html!{}} else {html!{
+                                                                            <select onchange=self.link.callback(|c| {Msg::UpdateGlobalFilterTarget(c)})>
+                                                                            { for domains.iter().map( |d| {
+                                                                                                              html!{<option value="d:".to_string()+d selected= GlobalFilterTarget::Domain(d.to_string())  == t >{d}</option>}
+                                                                                                          })}
+                                                                            { for intents.iter().map( |i| {
+                                                                                                              html!{<option value="i:".to_string()+i selected= GlobalFilterTarget::Intent(i.to_string())  == t >{i}</option>}
+                                                                                                          })}
 
 
-                                                                                              </select>}}}
-            </>
-        }
+                                                                            </select>}}}
+                </>
+            }
         } else { html!{}}
 
     }
@@ -444,14 +443,16 @@ fn sort_function(criterion: (TableField,SortDirection), a: &Case,b: &Case) -> st
 impl GraphDisplay {
     fn display(&self, app: &App) -> Html {
         html! {<table id="graph">
-            <tr>
-            {if app.global.gold && app.global.left 
-                {html!{<td>{self.display_pie(&app.corpus, CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}
+            <thead><tr style="background-color:lightgrey;"><th colspan="3">{app.display_global_filter()}</th></tr></thead>
+                <tbody>
+                <tr>
+                {if app.global.gold && app.global.left 
+                    {html!{<td>{self.display_pie(&app.corpus, CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}
             {if app.global.gold && app.global.right 
                 {html!{<td>{self.display_pie(&app.corpus, CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}
             {if app.global.left && app.global.right
                 {html!{<td>{self.display_pie(&app.corpus, CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}
-            </tr>
+            </tr></tbody>
                 </table>
         }
     }
@@ -462,10 +463,10 @@ impl GraphDisplay {
         let mut current_cases = corpus.cases.to_vec();
         if let Filter::LimitFilter(f,t) = self.filter.clone(){
 
-        current_cases = match f {
-            GlobalFilterMode::None => corpus.cases.to_vec(),
-            _ => current_cases.into_iter().filter(|x| app.limit_filter(x, &mode)).collect::<Vec<Case>>(),
-        }; };
+            current_cases = match f {
+                GlobalFilterMode::None => corpus.cases.to_vec(),
+                _ => current_cases.into_iter().filter(|x| app.limit_filter(x, &mode)).collect::<Vec<Case>>(),
+            }; };
 
         for i in 0..current_cases.len() {
             let what =
@@ -496,7 +497,7 @@ impl GraphDisplay {
 
         html!{<>
             <center><h3>{CompareList::as_str(&mode)}</h3></center>
-            <center><h4>{app.display_global_filter_infos()}</h4></center>
+                <center><h4>{app.display_global_filter_infos()}</h4></center>
                 <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                 <linearGradient id="lights" x1="1" x2="0" y1="1" y2="0">
@@ -511,19 +512,19 @@ impl GraphDisplay {
                                                  <circle cx="150" cy="150" r={radius} fill="transparent" stroke={format!("{}",p.3)} stroke-width={format!("{}",0.5*radius)} stroke-dasharray={format!("{} {}", p.0,p.1)} stroke-dashoffset={format!("{}",p.2)}></circle>
 
                                              })}
-                <circle cx="150" cy="150" r={radius} stroke="url(#lights)" stroke-width={format!("{}",0.5*radius)} ></circle>
+            <circle cx="150" cy="150" r={radius} stroke="url(#lights)" stroke-width={format!("{}",0.5*radius)} ></circle>
 
-            </svg>
-            <table>
-            {for AnnotationComparison::iterator().map(|v| html!{
-                                                                   <tr>
-                                                                       <td>{AnnotationComparison::as_str(v)}</td>
-                                                                       <td>{hm.get(v).unwrap_or(&0)}</td>
-                                                                       <td>{format!("{:.2}%", *hm.get(v).unwrap_or(&0) as f32 / (sum as f32) * 100.)}</td>
-                                                                    </tr>})}
+                </svg>
+                <table>
+                {for AnnotationComparison::iterator().map(|v| html!{
+                                                                       <tr>
+                                                                           <td>{AnnotationComparison::as_str(v)}</td>
+                                                                           <td>{hm.get(v).unwrap_or(&0)}</td>
+                                                                           <td>{format!("{:.2}%", *hm.get(v).unwrap_or(&0) as f32 / (sum as f32) * 100.)}</td>
+                                                                           </tr>})}
             <tfoot><tr><td>{"total"}</td><td>{sum}</td><td></td></tr></tfoot>
-            </table>
-            </>
+                </table>
+                </>
         }
     }
 
@@ -572,13 +573,13 @@ impl TableDisplay {
     fn filter_comparison(&self, c: &Case) -> bool {
         match &self.compare {
             Filter::CompareFilter(cl,o,ac) => {
-            let d = match cl {CompareList::GoldVSLeft => c.gold_vs_left, CompareList::GoldVSRight => c.gold_vs_right, CompareList::LeftVSRight => c.left_vs_right };
-        match o {
-            Operator::LTE => d <= *ac,
-            Operator::GTE => d >= *ac,
-            Operator::EQ => d == *ac,
-            Operator::NEQ => d != *ac,
-        }}
+                let d = match cl {CompareList::GoldVSLeft => c.gold_vs_left, CompareList::GoldVSRight => c.gold_vs_right, CompareList::LeftVSRight => c.left_vs_right };
+                match o {
+                    Operator::LTE => d <= *ac,
+                    Operator::GTE => d >= *ac,
+                    Operator::EQ => d == *ac,
+                    Operator::NEQ => d != *ac,
+                }}
             Filter::LimitFilter(f,t) => true
         }
     }
