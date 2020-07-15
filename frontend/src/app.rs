@@ -498,13 +498,21 @@ impl GraphDisplay {
             <center><h3>{CompareList::as_str(&mode)}</h3></center>
             <center><h4>{app.display_global_filter_infos()}</h4></center>
                 <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                <linearGradient id="lights" x1="1" x2="0" y1="1" y2="0">
+                <stop offset="0%" stop-color="rgba(254,252,234,0.2)"/>
+                <stop offset="100%" stop-color="rgba(241,218,54,0.3)"/>
+                </linearGradient>
+                </defs>
                 <circle cx="152" cy="152" r={radius *5./4.} fill="#444"></circle>
                 <circle cx="152" cy="152" r={radius *3./4.} fill="#fff"></circle>
                 <text x="150" y="150" style="fill:black; text-anchor: middle; dominant-baseline: middle;" font-size="24">{format!("{:.1}", *hm.get(&AnnotationComparison::SameValues).unwrap_or(&0) as f32 / (sum as f32) * 100.)}</text>
                 {for pos.iter().map(|p| html!{
-                                                 <circle cx="150" cy="150" r={format!("{}",radius)} fill="transparent" stroke={format!("{}",p.3)} stroke-width={format!("{}",0.5*radius)} stroke-dasharray={format!("{} {}", p.0,p.1)} stroke-dashoffset={format!("{}",p.2)}></circle>
+                                                 <circle cx="150" cy="150" r={radius} fill="transparent" stroke={format!("{}",p.3)} stroke-width={format!("{}",0.5*radius)} stroke-dasharray={format!("{} {}", p.0,p.1)} stroke-dashoffset={format!("{}",p.2)}></circle>
 
                                              })}
+                <circle cx="150" cy="150" r={radius} stroke="url(#lights)" stroke-width={format!("{}",0.5*radius)} ></circle>
+
             </svg>
             <table>
             {for AnnotationComparison::iterator().map(|v| html!{
