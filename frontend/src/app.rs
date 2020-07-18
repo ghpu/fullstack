@@ -13,6 +13,7 @@ use std::collections::{HashMap};
 use unidecode;
 
 
+
 pub struct App {
     link: ComponentLink<Self>,
     fetching: bool,
@@ -211,6 +212,7 @@ impl Component for App {
             Msg::Loaded(s) => {
                 let data: Json<Result<Corpus, Error>> = Ok(s).into();
                 let Json(dump) = data;
+                self.fetching = true;
                 self.link.callback(|x| Msg::FetchReady(x)).emit(dump);
             }
             Msg::File(file) => {
@@ -266,6 +268,8 @@ impl Component for App {
                 let filter_target = GlobalFilterTarget::Domain(self.corpus.intent_mapping.val.values().nth(0).unwrap().to_string());
                 self.graph.filter_mode = GlobalFilterMode::None;
                 self.graph.filter_target =filter_target.clone();
+                self.table.compare_mode= CompareList::GoldVSLeft;
+                self.table.filter = None;
                 self.table.compare_contains =filter_target;
                 // add domain to all annotations
                 for c in 0..self.corpus.cases.len() {
@@ -424,13 +428,18 @@ impl App {
         let mut intents = self.corpus.intent_mapping.val.keys().collect::<Vec<&String>>();
         intents.sort_unstable();
         intents.dedup();
-        html!{<>
-            <select onchange=self.link.callback(|c| {Msg::UpdateGraphFilterMode(c)})>
+        let select =  html! {
+         <select onchange=self.link.callback(|c| {Msg::UpdateGraphFilterMode(c)}) >
             { for GlobalFilterMode::iterator().map( |v| {
                                                             html!{<option value=GlobalFilterMode::as_str(v) selected= self.graph.filter_mode == *v  >{GlobalFilterMode::as_str(v)}</option>}
                                                         })}
             </select>
-            {if let GlobalFilterMode::None = self.graph.filter_mode {html!{}} else {html!{
+
+        };
+
+        html!{<form>
+            {select}
+                   {if let GlobalFilterMode::None = self.graph.filter_mode {html!{}} else {html!{
                                                                                              <select onchange=self.link.callback(|c| {Msg::UpdateGraphFilterTarget(c)})>
                                                                                              { for domains.iter().map( |d| {
                                                                                                                                html!{<option value="d:".to_string()+d selected= GlobalFilterTarget::Domain(d.to_string())  == self.graph.filter_target >{d}</option>}
@@ -441,7 +450,7 @@ impl App {
 
 
                                                                                              </select>}}}
-            </>
+            </form>
         }
 
     }
@@ -476,9 +485,9 @@ impl GraphDisplay {
             {if app.global.left && app.global.right
                 {html!{<td>{self.display_pie(CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}
             </tr>
-            <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}</tr>
-            <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
-            <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
+                <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}</tr>
+                <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
+                <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
                 </tbody>
                 </table>
         }
