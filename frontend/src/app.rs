@@ -470,33 +470,33 @@ impl GraphDisplay {
                 <tbody>
                 <tr>
                 {if app.global.gold && app.global.left 
-                    {html!{<td>{self.display_pie(&app.corpus, CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}
+                    {html!{<td>{self.display_pie(CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}
             {if app.global.gold && app.global.right 
-                {html!{<td>{self.display_pie(&app.corpus, CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}
+                {html!{<td>{self.display_pie(CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}
             {if app.global.left && app.global.right
-                {html!{<td>{self.display_pie(&app.corpus, CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}
+                {html!{<td>{self.display_pie(CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}
             </tr>
-            <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(&app.corpus, CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}</tr>
-            <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(&app.corpus, CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
-            <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(&app.corpus, CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
+            <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}</tr>
+            <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
+            <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
                 </tbody>
                 </table>
         }
     }
 
-    fn display_scatter(&self, corpus: &Corpus, mode: CompareList, app: &App) -> Html {
+    fn display_scatter(&self, mode: CompareList, app: &App) -> Html {
         html!{}
     }
 
 
-    fn display_pie(&self, corpus: &Corpus, mode: CompareList, app: &App) -> Html {
+    fn display_pie(&self, mode: CompareList, app: &App) -> Html {
         let pi: f32 = 3.14159265358979;
         let radius: f32 = 70.;
         let mut hm : HashMap<AnnotationComparison,usize> = HashMap::new();
-        let mut current_cases = corpus.cases.to_vec();
+        let mut current_cases = app.corpus.cases.to_vec();
 
         current_cases = match self.filter_mode {
-            GlobalFilterMode::None => corpus.cases.to_vec(),
+            GlobalFilterMode::None => app.corpus.cases.to_vec(),
             _ => current_cases.into_iter().filter(|x| app.graph_limit_filter(x, &mode)).collect::<Vec<Case>>(),
         };
 
