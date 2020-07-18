@@ -410,12 +410,26 @@ impl App {
     }
 
 
-    fn display_graph_filter_infos(&self) -> Html {
+    fn display_graph_filter_infos(&self, mode: &CompareList) -> Html {
         if let GlobalFilterMode::None = self.graph.filter_mode {
             html!{}
         } else {
             html!{<span>
-                {"Limited to : "}{GlobalFilterMode::as_str(&self.graph.filter_mode)}{" containing "}{&self.graph.filter_target}
+                {"Limited to : "}{match (self.graph.filter_mode,mode) {
+                                     (GlobalFilterMode::A,CompareList::GoldVSLeft) => "gold",
+                                     (GlobalFilterMode::A,CompareList::GoldVSRight) => "gold",
+                                     (GlobalFilterMode::A,CompareList::LeftVSRight) => "left",
+                                     (GlobalFilterMode::B,CompareList::GoldVSLeft) => "left",
+                                     (GlobalFilterMode::B,CompareList::GoldVSRight) => "right",
+                                     (GlobalFilterMode::B,CompareList::LeftVSRight) => "right",
+                                     (GlobalFilterMode::AORB,CompareList::GoldVSLeft)=> "gold or left",
+                                     (GlobalFilterMode::AORB,CompareList::GoldVSRight)=> "gold or right",
+                                     (GlobalFilterMode::AORB,CompareList::LeftVSRight)=> "left or right",
+                                     _ => panic!("not possible"),
+
+                                 }
+                }
+                {" containing "}{&self.graph.filter_target}
                 </span>
             }
         }
@@ -541,7 +555,7 @@ impl GraphDisplay {
 
         html!{<>
             <center><h3>{CompareList::as_str(&mode)}</h3></center>
-                <center><h4>{app.display_graph_filter_infos()}</h4></center>
+                <center><h4>{app.display_graph_filter_infos(&mode)}</h4></center>
                 <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                 <linearGradient id="lights" x1="1" x2="0" y1="1" y2="0">
