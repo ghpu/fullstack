@@ -284,14 +284,14 @@ impl Component for App {
                         ann.domain = self.corpus.intent_mapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
                         self.corpus.cases[c].right[a] = ann;
                     }
-                    // Compute comparisons for all cases
-                    for c in 0..self.corpus.cases.len() {
-                        self.corpus.cases[c].gold_vs_left = compare(&self.corpus.cases[c].gold, &self.corpus.cases[c].left);
-                        self.corpus.cases[c].gold_vs_right = compare(&self.corpus.cases[c].gold, &self.corpus.cases[c].right);
-                        self.corpus.cases[c].left_vs_right = compare(&self.corpus.cases[c].left, &self.corpus.cases[c].right);
-                    }
-
                 }
+                // Compute comparisons for all cases
+                for c in 0..self.corpus.cases.len() {
+                    self.corpus.cases[c].gold_vs_left = compare(&self.corpus.cases[c].gold, &self.corpus.cases[c].left);
+                    self.corpus.cases[c].gold_vs_right = compare(&self.corpus.cases[c].gold, &self.corpus.cases[c].right);
+                    self.corpus.cases[c].left_vs_right = compare(&self.corpus.cases[c].left, &self.corpus.cases[c].right);
+                }
+
 
                 self.table.opened = true;
             }
