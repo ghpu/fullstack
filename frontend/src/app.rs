@@ -1,5 +1,4 @@
 use anyhow::Error;
-use common::DataFromFile;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::console::ConsoleService;
@@ -16,8 +15,8 @@ pub struct App {
 
 pub enum Msg {
     NoOp,
-    FetchData,
-    FetchReady(Result<DataFromFile, Error>),
+//    FetchData,
+//    FetchReady(Result<DataFromFile, Error>),
     Ignore,
 }
 
@@ -37,14 +36,14 @@ impl Component for App {
 
     fn rendered(&mut self, first_render: bool) {
         if first_render {
-            self.link.callback(|_| Msg::FetchData).emit("");
+            //self.link.callback(|_| Msg::FetchData).emit("");
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::NoOp => {}
-            Msg::FetchData => {
+            /*Msg::FetchData => {
                 self.fetching = true;
                 let callback = self.link.callback(
                     move |response: Response<Json<Result<DataFromFile, Error>>>| {
@@ -63,7 +62,7 @@ impl Component for App {
             Msg::FetchReady(response) => {
                 self.fetching = false;
                 self.data = response.map(|data| data.name).ok();
-            }
+            }*/
             Msg::Ignore => {
                 self.fetching = false;
                 self.data = None;
