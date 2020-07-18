@@ -503,13 +503,15 @@ impl GraphDisplay {
         for i in 0..current_cases.len() {
             let what =
                 match mode {
-                    CompareList::GoldVSLeft => current_cases[i].gold_vs_left,
-                    CompareList::GoldVSRight => current_cases[i].gold_vs_right,
-                    CompareList::LeftVSRight => current_cases[i].left_vs_right,
+                    CompareList::GoldVSLeft => &current_cases[i].gold_vs_left,
+                    CompareList::GoldVSRight => &current_cases[i].gold_vs_right,
+                    CompareList::LeftVSRight => &current_cases[i].left_vs_right,
                     _ => panic!("not possible"),
                 };
-            let count = hm.entry(what).or_insert(0);
-            *count +=current_cases[i].count;
+            for e in what.iter() {
+                let count = hm.entry(*e).or_insert(0);
+                *count +=current_cases[i].count;
+            }
         }
 
         let sum = hm.values().fold(0, |acc, x| acc + x);
@@ -607,17 +609,17 @@ impl TableDisplay {
         match &self.compare_mode {
             CompareList::GoldVSLeft | CompareList::GoldVSRight | CompareList::LeftVSRight => {
                 let d = match &self.compare_mode {
-                    CompareList::GoldVSLeft => c.gold_vs_left, 
-                    CompareList::GoldVSRight => c.gold_vs_right, 
-                    CompareList::LeftVSRight => c.left_vs_right,
+                    CompareList::GoldVSLeft => &c.gold_vs_left, 
+                    CompareList::GoldVSRight => &c.gold_vs_right, 
+                    CompareList::LeftVSRight => &c.left_vs_right,
                     _ => panic!("not possible")
                 };
 
                 match &self.compare_operator {
-                    Operator::LTE => d <= self.compare_level,
-                    Operator::GTE => d >= self.compare_level,
-                    Operator::EQ => d == self.compare_level,
-                    Operator::NEQ => d != self.compare_level,
+                    Operator::LTE => d.iter().any( |x| x <= &self.compare_level),
+                    Operator::GTE => d.iter().any( |x| x >= &self.compare_level),
+                    Operator::EQ => d.iter().any( |x| x== &self.compare_level),
+                    Operator::NEQ => d.iter().any( |x| x != &self.compare_level),
                 }
 
             },

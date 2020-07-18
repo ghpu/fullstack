@@ -24,11 +24,11 @@ pub struct Case {
     pub left : Vec<Annotation>,
     pub right: Vec<Annotation>,
     #[serde(skip)]
-    pub gold_vs_left: AnnotationComparison,
+    pub gold_vs_left: Vec<AnnotationComparison>,
     #[serde(skip)]
-    pub gold_vs_right: AnnotationComparison,
+    pub gold_vs_right: Vec<AnnotationComparison>,
     #[serde(skip)]
-    pub left_vs_right: AnnotationComparison,
+    pub left_vs_right: Vec<AnnotationComparison>,
 }
 
 
@@ -55,7 +55,7 @@ impl Default for AnnotationComparison {
     fn default() -> Self { AnnotationComparison::Different }
 }
 
-pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> AnnotationComparison {
+pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> Vec<AnnotationComparison> {
     let mut result = AnnotationComparison::Different;
     let zipped = a.iter().zip(b.iter());
     if a.len() == b.len() && zipped.clone().all(|(c,d)| c.domain == d.domain) {
@@ -71,7 +71,7 @@ pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> AnnotationComparison
         } 
     }
 
-    result
+    vec!(result)
 }
 
 
