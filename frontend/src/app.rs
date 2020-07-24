@@ -531,7 +531,7 @@ impl GraphDisplay {
                     CompareList::LeftVSRight => &current_cases[i].left_vs_right,
                     _ => panic!("not possible"),
                 };
-            for e in what.iter() {
+            for e in what[0..1].iter() {
                 let count = hm.entry(*e).or_insert(0);
                 *count +=current_cases[i].count;
             }
