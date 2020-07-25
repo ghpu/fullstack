@@ -40,6 +40,12 @@ pub struct Annotation {
     pub values: Vec<(String,String)>
 }
 
+impl Annotation {
+    pub fn empty() -> Self {
+        Annotation { domain:"".to_string(), intent:"".to_string(), values:vec!()}
+    }
+}
+
 
 enum_str!{
     AnnotationComparison,

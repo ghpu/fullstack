@@ -1,6 +1,6 @@
 use anyhow::Error;
 use std::str::FromStr;
-use common::{Annotation,Case, Corpus, AnnotationComparison, compare, enum_str,AsStr, count};
+use common::{Annotation,Case, Corpus, AnnotationComparison, compare, enum_str,AsStr, count, annotation_align};
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
@@ -9,8 +9,10 @@ use yew::services::reader::{File, FileData, ReaderService, ReaderTask};
 use std::time::Duration;
 use std::hash::{Hash,Hasher};
 use std::slice::Iter;
-use std::collections::{HashMap};
+use std::collections::{HashMap,HashSet};
 use unidecode;
+
+use yew::services::ConsoleService;
 
 
 
@@ -416,19 +418,19 @@ impl App {
         } else {
             html!{<span>
                 {"Limited to : "}{match (self.graph.filter_mode,mode) {
-                                     (GlobalFilterMode::A,CompareList::GoldVSLeft) => "gold",
-                                     (GlobalFilterMode::A,CompareList::GoldVSRight) => "gold",
-                                     (GlobalFilterMode::A,CompareList::LeftVSRight) => "left",
-                                     (GlobalFilterMode::B,CompareList::GoldVSLeft) => "left",
-                                     (GlobalFilterMode::B,CompareList::GoldVSRight) => "right",
-                                     (GlobalFilterMode::B,CompareList::LeftVSRight) => "right",
-                                     (GlobalFilterMode::AORB,CompareList::GoldVSLeft)=> "gold or left",
-                                     (GlobalFilterMode::AORB,CompareList::GoldVSRight)=> "gold or right",
-                                     (GlobalFilterMode::AORB,CompareList::LeftVSRight)=> "left or right",
-                                     _ => panic!("not possible"),
+                                                                          (GlobalFilterMode::A,CompareList::GoldVSLeft) => "gold",
+                                                                          (GlobalFilterMode::A,CompareList::GoldVSRight) => "gold",
+                                                                          (GlobalFilterMode::A,CompareList::LeftVSRight) => "left",
+                                                                          (GlobalFilterMode::B,CompareList::GoldVSLeft) => "left",
+                                                                          (GlobalFilterMode::B,CompareList::GoldVSRight) => "right",
+                                                                          (GlobalFilterMode::B,CompareList::LeftVSRight) => "right",
+                                                                          (GlobalFilterMode::AORB,CompareList::GoldVSLeft)=> "gold or left",
+                                                                          (GlobalFilterMode::AORB,CompareList::GoldVSRight)=> "gold or right",
+                                                                          (GlobalFilterMode::AORB,CompareList::LeftVSRight)=> "left or right",
+                                                                          _ => panic!("not possible"),
 
+                                                                      }
                                  }
-                }
                 {" containing "}{&self.graph.filter_target}
                 </span>
             }
@@ -443,7 +445,7 @@ impl App {
         intents.sort_unstable();
         intents.dedup();
         let select =  html! {
-         <select onchange=self.link.callback(|c| {Msg::UpdateGraphFilterMode(c)}) >
+            <select onchange=self.link.callback(|c| {Msg::UpdateGraphFilterMode(c)}) >
             { for GlobalFilterMode::iterator().map( |v| {
                                                             html!{<option value=GlobalFilterMode::as_str(v) selected= self.graph.filter_mode == *v  >{GlobalFilterMode::as_str(v)}</option>}
                                                         })}
@@ -453,7 +455,7 @@ impl App {
 
         html!{<form>
             {select}
-                   {if let GlobalFilterMode::None = self.graph.filter_mode {html!{}} else {html!{
+            {if let GlobalFilterMode::None = self.graph.filter_mode {html!{}} else {html!{
                                                                                              <select onchange=self.link.callback(|c| {Msg::UpdateGraphFilterTarget(c)})>
                                                                                              { for domains.iter().map( |d| {
                                                                                                                                html!{<option value="d:".to_string()+d selected= GlobalFilterTarget::Domain(d.to_string())  == self.graph.filter_target >{d}</option>}
@@ -492,27 +494,86 @@ impl GraphDisplay {
             <thead><tr style="background-color:lightgrey;"><th colspan="3">{app.display_graph_filter()}</th></tr></thead>
                 <tbody>
                 <tr>
-                {if app.global.gold && app.global.left 
-                    {html!{<td>{self.display_pie(CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}
-            {if app.global.gold && app.global.right 
-                {html!{<td>{self.display_pie(CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}
-            {if app.global.left && app.global.right
-                {html!{<td>{self.display_pie(CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}
+                {if app.global.gold && app.global.left {html!{<td>{self.display_pie(CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}
+            {if app.global.gold && app.global.right {html!{<td>{self.display_pie(CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}
+            {if app.global.left && app.global.right {html!{<td>{self.display_pie(CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}
             </tr>
-                <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}</tr>
-                <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
-                <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
-                </tbody>
+                <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}
+            {if app.global.gold && app.global.right {html!{<td>{self.display_scatter(CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}
+            {if app.global.left && app.global.right {html!{<td>{self.display_scatter(CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
+            </tbody>
                 </table>
         }
     }
 
     fn display_scatter(&self, mode: CompareList, app: &App) -> Html {
-        html!{}
+        let mut hm : HashMap<(String,String),usize> = HashMap::new();
+        let mut current_cases = app.corpus.cases.to_vec();
+        let mut a_keys=HashSet::new();
+        let mut b_keys=HashSet::new();
+
+        current_cases = match self.filter_mode {
+            GlobalFilterMode::None => app.corpus.cases.to_vec(),
+            _ => current_cases.into_iter().filter(|x| app.graph_limit_filter(x, &mode)).collect::<Vec<Case>>(),
+        };
+
+        for i in 0..current_cases.len() {
+            let (a,b) =
+                match mode {
+                    CompareList::GoldVSLeft => (&current_cases[i].gold,&current_cases[i].left),
+                    CompareList::GoldVSRight => (&current_cases[i].gold,&current_cases[i].right),
+                    CompareList::LeftVSRight => (&current_cases[i].left,&current_cases[i].right),
+                    _ => panic!("not possible"),
+                };
+
+            let aligned_annotations = annotation_align(a,b);
+
+            for annot in aligned_annotations.into_iter() {
+                let first = annot.1.unwrap_or(Annotation::empty()).domain.clone();
+                let second = annot.2.unwrap_or(Annotation::empty()).domain.clone();
+                let count = hm.entry((first,second)).or_insert(0);
+                *count +=current_cases[i].count;
+            }
+
+            for k in hm.keys() {
+                a_keys.insert(k.0.clone());
+                b_keys.insert(k.1.clone());
+            }
+        }
+
+        let mut from: Vec<_> = a_keys.into_iter().collect();
+        let mut to: Vec<_> = b_keys.into_iter().collect();
+        from.sort();
+        to.sort();
+
+        let from_size = if from.len() == 0 { 1 } else { 300 / from.len()};
+        let to_size = if to.len() == 0 { 1 } else { 300 / to.len()};
+
+        ConsoleService::log(&format!("{:?}",from_size));
+        ConsoleService::log(&format!("{:?}",to_size));
+
+        let max = (1 as f32 + hm.values().fold(0 as usize, | max, x | if *x > max { *x } else {max} ) as f32).log2() as usize;
+        let color_step = if max == 0 {0} else {50 / max};
+
+        html!{
+            <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {for from.iter().enumerate().map(|(y, f)| {
+                                                          html!{for to.iter().enumerate().map(|(x, t)| {
+                                                              let col = format!("hsl(147,100%, {}%)", 100 - color_step* ( (1 as f32+ *hm.get(&(f.to_string(),t.to_string())).unwrap_or(&0) as f32).log2() as usize) );
+                                                              let title = format!("{} -> {} : {}",f,t, *hm.get(&(f.to_string(),t.to_string())).unwrap_or(&0));
+                                                              html!{<g><title>{title}</title>
+                                                                  <rect x=(x*to_size) y=(y*from_size) height=from_size width=to_size style={format!("fill:{}", col )}>
+                                                                      </rect></g>}
+                                                          })}}  ) 
+            }
+
+            </svg>
+        }
     }
 
 
     fn display_pie(&self, mode: CompareList, app: &App) -> Html {
+
         let pi: f32 = 3.14159265358979;
         let radius: f32 = 70.;
         let mut hm : HashMap<AnnotationComparison,usize> = HashMap::new();
