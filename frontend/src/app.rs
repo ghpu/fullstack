@@ -150,7 +150,7 @@ impl Component for App {
             fetching: false,
             //       ft: None,
             corpus: Corpus::empty(),
-            global: GlobalDisplay{gold:true, left:true,right:true, },
+            global: GlobalDisplay{gold:true, left:true,right:false, },
             graph: GraphDisplay{opened: true, filter_mode: GlobalFilterMode::None, filter_target: GlobalFilterTarget::Domain("".to_string())},
             table: TableDisplay{opened: true, current_index: 0, page_size: 50, link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), 
                 compare_mode : CompareList::GoldVSLeft, compare_operator: Operator::LTE, compare_level: AnnotationComparison::SameValues, compare_contains: GlobalFilterTarget::Domain("".to_string())},
@@ -338,7 +338,7 @@ impl Component for App {
         html! {
             if self.fetching {html!{<p>{"Please wait, loading..."}</p>}} else {
                 html!{<>
-                    <div  style="background-color:lightgrey; padding:0">
+                    <div style="background-color:lightgrey; padding:0">
                         <span><b>{"Case Analysis"}</b></span>
                         <input type="file" multiple=false onchange=self.link.callback(move |value|{
                             if let ChangeData::Files(file) = value {
@@ -498,6 +498,7 @@ impl GraphDisplay {
             {if app.global.gold && app.global.right {html!{<td>{self.display_pie(CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}
             {if app.global.left && app.global.right {html!{<td>{self.display_pie(CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}
             </tr>
+                <tr><td colspan="6"><hr/></td></tr>
                 <tr>{if app.global.gold && app.global.left {html!{<td>{self.display_scatter(CompareList::GoldVSLeft, app)}</td>}} else {html!{<td/>}}}
             {if app.global.gold && app.global.right {html!{<td>{self.display_scatter(CompareList::GoldVSRight, app)}</td>}} else {html!{<td/>}}}
             {if app.global.left && app.global.right {html!{<td>{self.display_scatter(CompareList::LeftVSRight, app)}</td>}} else {html!{<td/>}}}</tr>
@@ -562,7 +563,7 @@ impl GraphDisplay {
                                                               let col = format!("hsl(147,100%, {}%)", 100 - color_step* ( (1 as f32+ *hm.get(&(f.to_string(),t.to_string())).unwrap_or(&0) as f32).log2() as usize) );
                                                               let title = format!("{} -> {} : {}",f,t, *hm.get(&(f.to_string(),t.to_string())).unwrap_or(&0));
                                                               html!{<g><title>{title}</title>
-                                                                  <rect x=(x*to_size) y=(y*from_size) height=from_size width=to_size style={format!("fill:{}", col )}>
+                                                                  <rect x=(x*to_size) y=(y*from_size) rx=to_size/5 ry=from_size/5 height=from_size width=to_size style={format!("fill:{}", col )}>
                                                                       </rect></g>}
                                                           })}}  ) 
             }
