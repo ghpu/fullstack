@@ -532,10 +532,8 @@ impl GraphDisplay {
                     _ => panic!("not possible"),
                 };
 
-            for e in what.iter() {
-                let count = hm.entry(*e).or_insert(0);
-                *count +=current_cases[i].count;
-            }
+            let count = hm.entry(*what).or_insert(0);
+            *count +=current_cases[i].count;
         }
 
         let sum = hm.values().fold(0, |acc, x| acc + x);
@@ -640,10 +638,10 @@ impl TableDisplay {
                 };
 
                 match &self.compare_operator {
-                    Operator::LTE => d.iter().any( |x| x <= &self.compare_level),
-                    Operator::GTE => d.iter().any( |x| x >= &self.compare_level),
-                    Operator::EQ => d.iter().any( |x| x== &self.compare_level),
-                    Operator::NEQ => d.iter().any( |x| x != &self.compare_level),
+                    Operator::LTE => d <= &self.compare_level,
+                    Operator::GTE => d >= &self.compare_level,
+                    Operator::EQ => d == &self.compare_level,
+                    Operator::NEQ => d != &self.compare_level,
                 }
 
             },

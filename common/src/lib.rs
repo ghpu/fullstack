@@ -24,11 +24,11 @@ pub struct Case {
     pub left : Vec<Annotation>,
     pub right: Vec<Annotation>,
     #[serde(skip)]
-    pub gold_vs_left: Vec<AnnotationComparison>,
+    pub gold_vs_left: AnnotationComparison,
     #[serde(skip)]
-    pub gold_vs_right: Vec<AnnotationComparison>,
+    pub gold_vs_right: AnnotationComparison,
     #[serde(skip)]
-    pub left_vs_right: Vec<AnnotationComparison>,
+    pub left_vs_right: AnnotationComparison,
 }
 
 
@@ -147,7 +147,7 @@ pub enum CompareMode {
     Any,
 }
 
-pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> Vec<AnnotationComparison> {
+pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> AnnotationComparison {
     let aligned_annotations = annotation_align(a,b);
     let mut result = vec!();
 
@@ -174,7 +174,8 @@ pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> Vec<AnnotationCompar
             }
         }
     }
-    result
+    // find worst performance
+    result.iter().fold(AnnotationComparison::SameValues, | worst, &x| if x <worst {x} else {worst} )
 }
 
 
