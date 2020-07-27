@@ -530,10 +530,14 @@ impl GraphDisplay {
             let aligned_annotations = annotation_align(a,b);
 
             for annot in aligned_annotations.into_iter() {
-                let first = annot.1.unwrap_or(Annotation::empty()).domain.clone();
-                let second = annot.2.unwrap_or(Annotation::empty()).domain.clone();
-                let count = hm.entry((first,second)).or_insert(0);
-                *count +=current_cases[i].count;
+                let a1 = annot.1.unwrap_or(Annotation::empty());
+                let first = a1.domain.clone();
+                let a2 = annot.2.unwrap_or(Annotation::empty());
+                let second = a2.domain.clone();
+                if first != second || a1.intent!=a2.intent {
+                    let count = hm.entry((first,second)).or_insert(0);
+                    *count +=current_cases[i].count;
+                }
             }
 
             for k in hm.keys() {
@@ -549,18 +553,17 @@ impl GraphDisplay {
 
         let from_size = if from.len() == 0 { 1 } else { 300 / from.len()};
         let to_size = if to.len() == 0 { 1 } else { 300 / to.len()};
-
-        ConsoleService::log(&format!("{:?}",from_size));
-        ConsoleService::log(&format!("{:?}",to_size));
-
+ 
         let max = (1 as f32 + hm.values().fold(0 as usize, | max, x | if *x > max { *x } else {max} ) as f32).log2() as usize;
         let color_step = if max == 0 {0} else {50 / max};
 
         html!{
-            <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <>
+            <center><h3>{"Error map"}</h3></center>
+            <center><svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
             {for from.iter().enumerate().map(|(y, f)| {
                                                           html!{for to.iter().enumerate().map(|(x, t)| {
-                                                              let col = format!("hsl(147,100%, {}%)", 100 - color_step* ( (1 as f32+ *hm.get(&(f.to_string(),t.to_string())).unwrap_or(&0) as f32).log2() as usize) );
+                                                              let col = format!("hsl(0,100%, {}%)", 100 - color_step* ( (1 as f32+ *hm.get(&(f.to_string(),t.to_string())).unwrap_or(&0) as f32).log2() as usize) );
                                                               let title = format!("{} -> {} : {}",f,t, *hm.get(&(f.to_string(),t.to_string())).unwrap_or(&0));
                                                               html!{<g><title>{title}</title>
                                                                   <rect x=(x*to_size) y=(y*from_size) rx=to_size/5 ry=from_size/5 height=from_size width=to_size style={format!("fill:{}", col )}>
@@ -568,7 +571,8 @@ impl GraphDisplay {
                                                           })}}  ) 
             }
 
-            </svg>
+            </svg></center>
+                </>
         }
     }
 
@@ -617,6 +621,7 @@ impl GraphDisplay {
         html!{<>
             <center><h3>{CompareList::as_str(&mode)}</h3></center>
                 <center><h4>{app.display_graph_filter_infos(&mode)}</h4></center>
+                <center>
                 <svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                 <linearGradient id="lights" x1="1" x2="0" y1="1" y2="0">
@@ -633,8 +638,8 @@ impl GraphDisplay {
                                              })}
             <circle cx="150" cy="150" r={radius} stroke="url(#lights)" stroke-width={format!("{}",0.5*radius)} ></circle>
 
-                </svg>
-                <table>
+                </svg></center>
+                <center><table>
                 {for AnnotationComparison::iterator().map(|v| html!{
                                                                        <tr>
                                                                            <td>{AnnotationComparison::as_str(v)}</td>
@@ -642,7 +647,7 @@ impl GraphDisplay {
                                                                            <td>{format!("{:.2}%", *hm.get(v).unwrap_or(&0) as f32 / (sum as f32) * 100.)}</td>
                                                                            </tr>})}
             <tfoot><tr><td>{"total"}</td><td>{sum}</td><td></td></tr></tfoot>
-                </table>
+                </table></center>
                 </>
         }
     }
