@@ -3,8 +3,12 @@ use actix_web::{web, App, HttpRequest, HttpServer, Result};
 use std::path::PathBuf;
 
 async fn index(req: HttpRequest) -> Result<NamedFile> {
-    let path: PathBuf = req.match_info().query("filename").parse().unwrap();
-    Ok(NamedFile::open(path)?)
+    let mut path: PathBuf = req.match_info().query("filename").parse().unwrap();
+    if path.exists() {
+        Ok(NamedFile::open(path)?)
+    } else {
+        Ok(NamedFile::open("index.html")?)
+    }
 }
 
 #[actix_rt::main]

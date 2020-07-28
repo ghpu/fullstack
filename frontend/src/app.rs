@@ -73,7 +73,10 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
+            <>
             <div>{ "Hello world!, " }{self.fetching}{ format!("{:?}", self.data) }</div>
+            <div></div>
+            </>
         }
     }
 
