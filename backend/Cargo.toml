@@ -8,6 +8,9 @@ edition = "2018"
 
 [dependencies]
 common = { path="../common" }
+actix = ""
 actix-web = ""
 actix-rt =""
 actix-files = ""
+actix-web-actors = ""
+futures = ""
