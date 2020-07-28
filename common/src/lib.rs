@@ -1,8 +1,8 @@
 use serde_derive::{Deserialize, Serialize};
-use std::collections::{HashMap};
+use std::collections::HashMap;
+use std::slice::Iter;
 use std::str::FromStr;
 use std::vec::Vec;
-use std::slice::Iter;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Corpus {
@@ -12,7 +12,7 @@ pub struct Corpus {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct IntentMapping {
-    pub val: HashMap<String,String> // key=intent, value=domain
+    pub val: HashMap<String, String>, // key=intent, value=domain
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash)]
@@ -21,7 +21,7 @@ pub struct Case {
     pub reference: usize,
     pub count: usize,
     pub gold: Vec<Annotation>,
-    pub left : Vec<Annotation>,
+    pub left: Vec<Annotation>,
     pub right: Vec<Annotation>,
     #[serde(skip)]
     pub gold_vs_left: AnnotationComparison,
@@ -31,23 +31,25 @@ pub struct Case {
     pub left_vs_right: AnnotationComparison,
 }
 
-
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord )]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Annotation {
     #[serde(skip)]
     pub domain: String,
     pub intent: String,
-    pub values: Vec<(String,String)>
+    pub values: Vec<(String, String)>,
 }
 
 impl Annotation {
     pub fn empty() -> Self {
-        Annotation { domain:"".to_string(), intent:"".to_string(), values:vec!()}
+        Annotation {
+            domain: "".to_string(),
+            intent: "".to_string(),
+            values: vec![],
+        }
     }
 }
 
-
-enum_str!{
+enum_str! {
     AnnotationComparison,
     (Different,"different"),
     (SameDomains,"same domains"),
@@ -58,45 +60,71 @@ enum_str!{
 }
 
 impl Default for AnnotationComparison {
-    fn default() -> Self { AnnotationComparison::Different }
+    fn default() -> Self {
+        AnnotationComparison::Different
+    }
 }
 
 fn annotation_dist(a: &Annotation, b: &Annotation) -> u32 {
-    if a==b { return 0 };
-    if a.intent != a.intent { return 1000 };
-    let aligned_values = kv_align(&a.values,&b.values);
+    if a == b {
+        return 0;
+    };
+    if a.intent != a.intent {
+        return 1000;
+    };
+    let aligned_values = kv_align(&a.values, &b.values);
 
-    aligned_values.iter().fold(0, | acc, (s, _,_) | acc+ *s )
+    aligned_values.iter().fold(0, |acc, (s, _, _)| acc + *s)
 }
 
-
-fn kv_dist(a: &(String,String), b: &(String,String)) -> u32 {
-    if a==b { return 0 }
-    if a.0 != b.0 { return 100 } // different properties
+fn kv_dist(a: &(String, String), b: &(String, String)) -> u32 {
+    if a == b {
+        return 0;
+    }
+    if a.0 != b.0 {
+        return 100;
+    } // different properties
     10 // same property, different values
 }
 
-
-pub fn annotation_align(a: &Vec<Annotation>, b: &Vec<Annotation>) -> Vec<(u32,Option<Annotation>,Option<Annotation>)> {
-    let (smallest, mut largest) = if a.len() <= b.len() {(a,b.clone())} else {(b,a.clone())};
+pub fn annotation_align(
+    a: &Vec<Annotation>,
+    b: &Vec<Annotation>,
+) -> Vec<(u32, Option<Annotation>, Option<Annotation>)> {
+    let (smallest, mut largest) = if a.len() <= b.len() {
+        (a, b.clone())
+    } else {
+        (b, a.clone())
+    };
     let a_is_smallest = a.len() <= b.len();
-    let mut result : Vec<(u32,Option<Annotation>,Option<Annotation>)> = vec!();
+    let mut result: Vec<(u32, Option<Annotation>, Option<Annotation>)> = vec![];
 
     for i in 0..smallest.len() {
         let x = &smallest[i];
-        let (best_index, distance) = largest.iter().enumerate().fold((0,9999), | (min_index,min), (index,val) | { let d = annotation_dist(x,&val); if d < min { (index,d) } else {(min_index,min)}} ); // find best match for x in largest, and also returns distance
+        let (best_index, distance) =
+            largest
+                .iter()
+                .enumerate()
+                .fold((0, 9999), |(min_index, min), (index, val)| {
+                    let d = annotation_dist(x, &val);
+                    if d < min {
+                        (index, d)
+                    } else {
+                        (min_index, min)
+                    }
+                }); // find best match for x in largest, and also returns distance
         if distance >= 1000 {
             if a_is_smallest {
-                result.push((100,Some(x.clone()),None));
+                result.push((100, Some(x.clone()), None));
             } else {
-                result.push((100, None,Some(x.clone())));
+                result.push((100, None, Some(x.clone())));
             }
         } else {
             let best_match = largest.swap_remove(best_index); // remove best match from future candidates
             if a_is_smallest {
-                result.push((distance,Some(x.clone()),Some(best_match)));
+                result.push((distance, Some(x.clone()), Some(best_match)));
             } else {
-                result.push((distance, Some(best_match),Some(x.clone())));
+                result.push((distance, Some(best_match), Some(x.clone())));
             }
         }
     }
@@ -104,34 +132,52 @@ pub fn annotation_align(a: &Vec<Annotation>, b: &Vec<Annotation>) -> Vec<(u32,Op
     for i in 0..largest.len() {
         let x = &largest[i];
         if a_is_smallest {
-            result.push((100,None,Some(x.clone())));
+            result.push((100, None, Some(x.clone())));
         } else {
-            result.push((100,Some(x.clone()),None));
+            result.push((100, Some(x.clone()), None));
         }
-    };
+    }
     result
 }
 
-pub fn kv_align(a: &Vec<(String,String)>, b: &Vec<(String,String)>) -> Vec<(u32,Option<(String,String)>,Option<(String,String)>)> {
-    let (smallest, mut largest) = if a.len() <= b.len() {(a,b.clone())} else {(b,a.clone())};
+pub fn kv_align(
+    a: &Vec<(String, String)>,
+    b: &Vec<(String, String)>,
+) -> Vec<(u32, Option<(String, String)>, Option<(String, String)>)> {
+    let (smallest, mut largest) = if a.len() <= b.len() {
+        (a, b.clone())
+    } else {
+        (b, a.clone())
+    };
     let a_is_smallest = a.len() <= b.len();
-    let mut result : Vec<(u32,Option<(String,String)>,Option<(String,String)>)> = vec!();
+    let mut result: Vec<(u32, Option<(String, String)>, Option<(String, String)>)> = vec![];
 
     for i in 0..smallest.len() {
         let x = &smallest[i];
-        let (best_index, distance) = largest.iter().enumerate().fold((0,9999), | (min_index,min), (index,val) | { let d = kv_dist(x,&val); if d < min { (index,d) } else {(min_index,min)}} ); // find best match for x in largest, and also returns distance
+        let (best_index, distance) =
+            largest
+                .iter()
+                .enumerate()
+                .fold((0, 9999), |(min_index, min), (index, val)| {
+                    let d = kv_dist(x, &val);
+                    if d < min {
+                        (index, d)
+                    } else {
+                        (min_index, min)
+                    }
+                }); // find best match for x in largest, and also returns distance
         if distance >= 100 {
             if a_is_smallest {
-                result.push((distance,Some(x.clone()),None));
+                result.push((distance, Some(x.clone()), None));
             } else {
-                result.push((distance, None,Some(x.clone())));
+                result.push((distance, None, Some(x.clone())));
             }
         } else {
             let best_match = largest.swap_remove(best_index); // remove best match from future candidates
             if a_is_smallest {
-                result.push((distance,Some(x.clone()),Some(best_match)));
+                result.push((distance, Some(x.clone()), Some(best_match)));
             } else {
-                result.push((distance, Some(best_match),Some(x.clone())));
+                result.push((distance, Some(best_match), Some(x.clone())));
             }
         }
     }
@@ -139,14 +185,13 @@ pub fn kv_align(a: &Vec<(String,String)>, b: &Vec<(String,String)>) -> Vec<(u32,
     for i in 0..largest.len() {
         let x = &largest[i];
         if a_is_smallest {
-            result.push((100,None,Some(x.clone())));
+            result.push((100, None, Some(x.clone())));
         } else {
-            result.push((100,Some(x.clone()),None));
+            result.push((100, Some(x.clone()), None));
         }
-    };
+    }
     result
 }
-
 
 pub enum CompareMode {
     All,
@@ -154,16 +199,15 @@ pub enum CompareMode {
 }
 
 pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> AnnotationComparison {
-    let aligned_annotations = annotation_align(a,b);
-    let mut result = vec!();
+    let aligned_annotations = annotation_align(a, b);
+    let mut result = vec![];
 
-    for (d,A,B) in aligned_annotations.into_iter() {
-        match (A,B) {
-            (None,None) => panic!("not possible"),
+    for (d, A, B) in aligned_annotations.into_iter() {
+        match (A, B) {
+            (None, None) => panic!("not possible"),
             (Some(a), None) => result.push(AnnotationComparison::Different),
             (None, Some(b)) => result.push(AnnotationComparison::Different),
-            (Some(a),Some(b)) => {
-
+            (Some(a), Some(b)) => {
                 if a.intent != b.intent {
                     if a.domain != b.domain {
                         result.push(AnnotationComparison::Different);
@@ -171,9 +215,9 @@ pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> AnnotationComparison
                         result.push(AnnotationComparison::SameDomains);
                     }
                 } else {
-                    match d {  
-                        x if x==0 => result.push(AnnotationComparison::SameValues),
-                        x if x<100 => result.push(AnnotationComparison::SameProperties),
+                    match d {
+                        x if x == 0 => result.push(AnnotationComparison::SameValues),
+                        x if x < 100 => result.push(AnnotationComparison::SameProperties),
                         _ => result.push(AnnotationComparison::SameIntents),
                     }
                 }
@@ -181,13 +225,25 @@ pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> AnnotationComparison
         }
     }
     // find worst performance
-    result.iter().fold(AnnotationComparison::SameValues, | worst, &x| if x <worst {x} else {worst} )
+    result
+        .iter()
+        .fold(AnnotationComparison::SameValues, |worst, &x| {
+            if x < worst {
+                x
+            } else {
+                worst
+            }
+        })
 }
-
 
 impl Corpus {
     pub fn empty() -> Self {
-        Corpus{intent_mapping: IntentMapping {val:HashMap::new()}, cases:vec![]}
+        Corpus {
+            intent_mapping: IntentMapping {
+                val: HashMap::new(),
+            },
+            cases: vec![],
+        }
     }
 }
 
@@ -243,4 +299,3 @@ macro_rules! enum_str {
 
     }
 }
-

@@ -1,20 +1,21 @@
 use anyhow::Error;
+use common::{
+    annotation_align, compare, count, enum_str, Annotation, AnnotationComparison, AsStr, Case,
+    Corpus,
+};
+use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
+use std::slice::Iter;
 use std::str::FromStr;
-use common::{Annotation,Case, Corpus, AnnotationComparison, compare, enum_str,AsStr, count, annotation_align};
+use std::time::Duration;
+use unidecode;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
-use yew::services::TimeoutService;
 use yew::services::reader::{File, FileData, ReaderService, ReaderTask};
-use std::time::Duration;
-use std::hash::{Hash,Hasher};
-use std::slice::Iter;
-use std::collections::{HashMap,HashSet};
-use unidecode;
+use yew::services::TimeoutService;
 
 use yew::services::ConsoleService;
-
-
 
 pub struct App {
     link: ComponentLink<Self>,
@@ -25,16 +26,16 @@ pub struct App {
     graph: GraphDisplay,
 
     task: Option<ReaderTask>,
-    corpus: Corpus
+    corpus: Corpus,
 }
 
 struct GlobalDisplay {
     gold: bool,
     left: bool,
-    right:bool,
+    right: bool,
 }
 
-enum_str!{
+enum_str! {
     GlobalFilterMode,
     (None,"no filter"),
     (A,"a"),
@@ -42,8 +43,8 @@ enum_str!{
     (AORB,"a or b"),
 }
 
-#[derive(PartialEq,Eq,Clone)]
-enum GlobalFilterTarget{
+#[derive(PartialEq, Eq, Clone)]
+enum GlobalFilterTarget {
     Domain(String),
     Intent(String),
 }
@@ -52,7 +53,7 @@ impl std::fmt::Display for GlobalFilterTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
             GlobalFilterTarget::Domain(d) => write!(f, "domain : {}", d),
-            GlobalFilterTarget::Intent(i) => write!(f, "intent : {}", i)
+            GlobalFilterTarget::Intent(i) => write!(f, "intent : {}", i),
         }
     }
 }
@@ -68,13 +69,13 @@ struct TableDisplay {
     current_index: usize,
     page_size: usize,
     link_ref: ComponentLink<App>,
-    sort_criterion: (TableField,SortDirection),
+    sort_criterion: (TableField, SortDirection),
     filter: Option<String>,
     debounce_handle: yew::services::timeout::TimeoutTask,
-    compare_mode:CompareList,
-    compare_operator:Operator,
-    compare_level:AnnotationComparison,
-    compare_contains:GlobalFilterTarget,
+    compare_mode: CompareList,
+    compare_operator: Operator,
+    compare_level: AnnotationComparison,
+    compare_contains: GlobalFilterTarget,
 }
 
 enum_str! {
@@ -99,7 +100,7 @@ enum_str! {
     (NEQ,"!="),
 }
 
-enum_str!{
+enum_str! {
     TableField,
     (ID,"ID"),
     (Text,"Text"),
@@ -109,12 +110,10 @@ enum_str!{
     (Right,"Right"),
 }
 
-enum_str!{SortDirection,
+enum_str! {SortDirection,
 (Increasing," ↑"),
 (Decreasing," ↓"),
 }
-
-
 
 pub enum Msg {
     NoOp,
@@ -150,11 +149,33 @@ impl Component for App {
             fetching: false,
             //       ft: None,
             corpus: Corpus::empty(),
-            global: GlobalDisplay{gold:true, left:true,right:false, },
-            graph: GraphDisplay{opened: true, filter_mode: GlobalFilterMode::None, filter_target: GlobalFilterTarget::Domain("".to_string())},
-            table: TableDisplay{opened: true, current_index: 0, page_size: 50, link_ref:link.clone(), sort_criterion:(TableField::ID, SortDirection::Increasing), filter: None, debounce_handle: TimeoutService::spawn(Duration::from_secs(1), link.clone().callback(|_| Msg::NoOp)), 
-                compare_mode : CompareList::GoldVSLeft, compare_operator: Operator::LTE, compare_level: AnnotationComparison::SameValues, compare_contains: GlobalFilterTarget::Domain("".to_string())},
-                task: None,
+            global: GlobalDisplay {
+                gold: true,
+                left: true,
+                right: false,
+            },
+            graph: GraphDisplay {
+                opened: true,
+                filter_mode: GlobalFilterMode::None,
+                filter_target: GlobalFilterTarget::Domain("".to_string()),
+            },
+            table: TableDisplay {
+                opened: true,
+                current_index: 0,
+                page_size: 50,
+                link_ref: link.clone(),
+                sort_criterion: (TableField::ID, SortDirection::Increasing),
+                filter: None,
+                debounce_handle: TimeoutService::spawn(
+                    Duration::from_secs(1),
+                    link.clone().callback(|_| Msg::NoOp),
+                ),
+                compare_mode: CompareList::GoldVSLeft,
+                compare_operator: Operator::LTE,
+                compare_level: AnnotationComparison::SameValues,
+                compare_contains: GlobalFilterTarget::Domain("".to_string()),
+            },
+            task: None,
         }
     }
 
@@ -172,44 +193,46 @@ impl Component for App {
                 }
             }
 
-            Msg::UpdateGraphFilterTarget(cd) => { 
+            Msg::UpdateGraphFilterTarget(cd) => {
                 if let ChangeData::Select(se) = cd {
                     let s = &se.value();
-                    if &s[0..2]=="d:" {
+                    if &s[0..2] == "d:" {
                         self.graph.filter_target = GlobalFilterTarget::Domain(s[2..].to_string());
                     }
-                    if &s[0..2]=="i:" {
+                    if &s[0..2] == "i:" {
                         self.graph.filter_target = GlobalFilterTarget::Intent(s[2..].to_string());
                     }
                 }
             }
 
-            Msg::UpdateTableFilterTarget(cd) => { 
+            Msg::UpdateTableFilterTarget(cd) => {
                 if let ChangeData::Select(se) = cd {
                     let s = &se.value();
-                    if &s[0..2]=="d:" {
-                        self.table.compare_contains = GlobalFilterTarget::Domain(s[2..].to_string());
+                    if &s[0..2] == "d:" {
+                        self.table.compare_contains =
+                            GlobalFilterTarget::Domain(s[2..].to_string());
                     }
-                    if &s[0..2]=="i:" {
-                        self.table.compare_contains = GlobalFilterTarget::Intent(s[2..].to_string());
+                    if &s[0..2] == "i:" {
+                        self.table.compare_contains =
+                            GlobalFilterTarget::Intent(s[2..].to_string());
                     }
                 }
             }
 
             Msg::ToggleGold => {
-                self.global.gold= !self.global.gold;
+                self.global.gold = !self.global.gold;
             }
             Msg::ToggleLeft => {
-                self.global.left= !self.global.left;
+                self.global.left = !self.global.left;
             }
             Msg::ToggleRight => {
-                self.global.right= !self.global.right;
+                self.global.right = !self.global.right;
             }
             Msg::ToggleTable => {
-                self.table.opened= !self.table.opened;
+                self.table.opened = !self.table.opened;
             }
             Msg::ToggleGraph => {
-                self.graph.opened= !self.graph.opened;
+                self.graph.opened = !self.graph.opened;
             }
             Msg::Loaded(s) => {
                 let data: Json<Result<Corpus, Error>> = Ok(s).into();
@@ -219,10 +242,12 @@ impl Component for App {
             }
             Msg::File(file) => {
                 let task = {
-                    let callback = self.link.callback(|x:FileData| {Msg::Loaded(unsafe {String::from_utf8_unchecked(x.content)})});
+                    let callback = self.link.callback(|x: FileData| {
+                        Msg::Loaded(unsafe { String::from_utf8_unchecked(x.content) })
+                    });
                     ReaderService::new().read_file(file, callback).unwrap()
                 };
-                self.task=Some(task);
+                self.task = Some(task);
             }
             Msg::UpdateCompare(cd) => {
                 if let ChangeData::Select(se) = cd {
@@ -239,74 +264,109 @@ impl Component for App {
                     self.table.compare_level = AnnotationComparison::from_str(&se.value()).unwrap();
                 }
             }
-            Msg::UpdateFilter(filter_string) => { 
-                self.table.debounce_handle = TimeoutService::spawn(Duration::from_millis(200), self.link.callback(move |_| Msg::DebouncedExecution(filter_string.clone()) ));
+            Msg::UpdateFilter(filter_string) => {
+                self.table.debounce_handle = TimeoutService::spawn(
+                    Duration::from_millis(200),
+                    self.link
+                        .callback(move |_| Msg::DebouncedExecution(filter_string.clone())),
+                );
             }
             Msg::DebouncedExecution(filter_string) => {
-                self.table.filter = if filter_string=="" {None} else {Some(filter_string)};
+                self.table.filter = if filter_string == "" {
+                    None
+                } else {
+                    Some(filter_string)
+                };
             }
             Msg::NoOp => {}
             /*
-             * Msg::FetchData => {
-             self.fetching = true;
-             let callback = self.link.callback(
-             move |response: Response<Json<Result<Corpus, Error>>>| {
-             let (meta, Json(data)) = response.into_parts();
-             if meta.status.is_success() {
-             Msg::FetchReady(data)
-             } else {
-             Msg::Ignore
-             }
-             },
-             );
-             let request = Request::get("/data").body(Nothing).unwrap();
-             let task = FetchService::fetch(request, callback).unwrap();
-             self.ft = Some(task);
-             }
-             */
+            * Msg::FetchData => {
+            self.fetching = true;
+            let callback = self.link.callback(
+            move |response: Response<Json<Result<Corpus, Error>>>| {
+            let (meta, Json(data)) = response.into_parts();
+            if meta.status.is_success() {
+            Msg::FetchReady(data)
+            } else {
+            Msg::Ignore
+            }
+            },
+            );
+            let request = Request::get("/data").body(Nothing).unwrap();
+            let task = FetchService::fetch(request, callback).unwrap();
+            self.ft = Some(task);
+            }
+            */
             Msg::FetchReady(response) => {
                 self.fetching = false;
                 self.corpus = response.unwrap_or(Corpus::empty()).clone();
-                let filter_target = GlobalFilterTarget::Domain(self.corpus.intent_mapping.val.values().nth(0).unwrap().to_string());
+                let filter_target = GlobalFilterTarget::Domain(
+                    self.corpus
+                        .intent_mapping
+                        .val
+                        .values()
+                        .nth(0)
+                        .unwrap()
+                        .to_string(),
+                );
                 self.graph.filter_mode = GlobalFilterMode::None;
-                self.graph.filter_target =filter_target.clone();
-                self.table.compare_mode= CompareList::GoldVSLeft;
+                self.graph.filter_target = filter_target.clone();
+                self.table.compare_mode = CompareList::GoldVSLeft;
                 self.table.filter = None;
-                self.table.compare_contains =filter_target;
+                self.table.compare_contains = filter_target;
                 // add domain to all annotations
                 for c in 0..self.corpus.cases.len() {
                     for a in 0..self.corpus.cases[c].gold.len() {
                         let mut ann = self.corpus.cases[c].gold[a].clone();
-                        ann.domain = self.corpus.intent_mapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
+                        ann.domain = self
+                            .corpus
+                            .intent_mapping
+                            .val
+                            .get(&ann.intent)
+                            .unwrap_or(&"".to_string())
+                            .clone();
                         self.corpus.cases[c].gold[a] = ann;
                     }
                     for a in 0..self.corpus.cases[c].left.len() {
                         let mut ann = self.corpus.cases[c].left[a].clone();
-                        ann.domain = self.corpus.intent_mapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
+                        ann.domain = self
+                            .corpus
+                            .intent_mapping
+                            .val
+                            .get(&ann.intent)
+                            .unwrap_or(&"".to_string())
+                            .clone();
                         self.corpus.cases[c].left[a] = ann;
                     }
                     for a in 0..self.corpus.cases[c].right.len() {
                         let mut ann = self.corpus.cases[c].right[a].clone();
-                        ann.domain = self.corpus.intent_mapping.val.get(&ann.intent).unwrap_or(&"".to_string()).clone();
+                        ann.domain = self
+                            .corpus
+                            .intent_mapping
+                            .val
+                            .get(&ann.intent)
+                            .unwrap_or(&"".to_string())
+                            .clone();
                         self.corpus.cases[c].right[a] = ann;
                     }
                 }
                 // Compute comparisons for all cases
                 for c in 0..self.corpus.cases.len() {
-                    self.corpus.cases[c].gold_vs_left = compare(&self.corpus.cases[c].gold, &self.corpus.cases[c].left);
-                    self.corpus.cases[c].gold_vs_right = compare(&self.corpus.cases[c].gold, &self.corpus.cases[c].right);
-                    self.corpus.cases[c].left_vs_right = compare(&self.corpus.cases[c].left, &self.corpus.cases[c].right);
+                    self.corpus.cases[c].gold_vs_left =
+                        compare(&self.corpus.cases[c].gold, &self.corpus.cases[c].left);
+                    self.corpus.cases[c].gold_vs_right =
+                        compare(&self.corpus.cases[c].gold, &self.corpus.cases[c].right);
+                    self.corpus.cases[c].left_vs_right =
+                        compare(&self.corpus.cases[c].left, &self.corpus.cases[c].right);
                 }
-
 
                 self.table.opened = true;
             }
             /*
-               Msg::Ignore => {
-               self.fetching = false;
-               }
-               */
-
+            Msg::Ignore => {
+            self.fetching = false;
+            }
+            */
             Msg::UpdatePageSize(cd) => {
                 if let ChangeData::Select(se) = cd {
                     self.table.page_size = se.value().parse::<usize>().unwrap()
@@ -314,22 +374,20 @@ impl Component for App {
             }
 
             Msg::UpdateCurrentIndex(ci) => {
-                self.table.current_index=ci;
+                self.table.current_index = ci;
             }
             Msg::UpdateSort(f) => {
-                let (c,_) = self.table.sort_criterion;
+                let (c, _) = self.table.sort_criterion;
                 if f == c {
-                    if let SortDirection::Increasing = self.table.sort_criterion.1  {
+                    if let SortDirection::Increasing = self.table.sort_criterion.1 {
                         self.table.sort_criterion.1 = SortDirection::Decreasing;
                     } else {
                         self.table.sort_criterion.1 = SortDirection::Increasing;
                     }
-                }
-                else {
-                    self.table.sort_criterion = (f,SortDirection::Increasing);
+                } else {
+                    self.table.sort_criterion = (f, SortDirection::Increasing);
                 }
             }
-
         }
         true
     }
@@ -364,59 +422,68 @@ impl Component for App {
     fn change(&mut self, _: <Self as yew::html::Component>::Properties) -> bool {
         false
     }
-
 }
 
 impl App {
-
     fn graph_target_filter(&self, what: &Annotation) -> bool {
         match &self.graph.filter_target {
-            GlobalFilterTarget::Domain(d) => what.domain==*d,
-            GlobalFilterTarget::Intent(i) => what.intent==*i,
+            GlobalFilterTarget::Domain(d) => what.domain == *d,
+            GlobalFilterTarget::Intent(i) => what.intent == *i,
         }
     }
 
-    fn graph_limit_filter(&self, what: &Case, mode: &CompareList ) -> bool {
-        let (a,b) = match mode {
+    fn graph_limit_filter(&self, what: &Case, mode: &CompareList) -> bool {
+        let (a, b) = match mode {
             CompareList::GoldVSLeft => (&what.gold, &what.left),
             CompareList::GoldVSRight => (&what.gold, &what.right),
             CompareList::LeftVSRight => (&what.left, &what.right),
-            _ => panic!("not possible")
+            _ => panic!("not possible"),
         };
-        match self.graph.filter_mode  {
+        match self.graph.filter_mode {
             GlobalFilterMode::None => true,
-            GlobalFilterMode::A  =>  a.iter().any(|x| self.graph_target_filter(x) ),
-            GlobalFilterMode::B => b.iter().any(|x| self.graph_target_filter(x) ),
-            GlobalFilterMode::AORB => a.iter().any(|x| self.graph_target_filter(x)) || b.iter().any(|x| self.graph_target_filter(x)),
+            GlobalFilterMode::A => a.iter().any(|x| self.graph_target_filter(x)),
+            GlobalFilterMode::B => b.iter().any(|x| self.graph_target_filter(x)),
+            GlobalFilterMode::AORB => {
+                a.iter().any(|x| self.graph_target_filter(x))
+                    || b.iter().any(|x| self.graph_target_filter(x))
+            }
         }
     }
 
     fn table_target_filter(&self, what: &Annotation) -> bool {
         match &self.table.compare_contains {
-            GlobalFilterTarget::Domain(d) => what.domain==*d,
-            GlobalFilterTarget::Intent(i) => what.intent==*i,
+            GlobalFilterTarget::Domain(d) => what.domain == *d,
+            GlobalFilterTarget::Intent(i) => what.intent == *i,
         }
     }
 
-
-    fn table_limit_filter(&self, what: &Case, mode: &CompareList ) -> bool {
+    fn table_limit_filter(&self, what: &Case, mode: &CompareList) -> bool {
         match mode {
-            CompareList::Gold => what.gold.iter().any(|x| self.table_target_filter(x) ),
-            CompareList::Left => what.left.iter().any(|x| self.table_target_filter(x) ),
-            CompareList::Right => what.right.iter().any(|x| self.table_target_filter(x) ),
-            CompareList::GoldOrLeft => what.gold.iter().any(|x| self.table_target_filter(x)) || what.left.iter().any(|x| self.table_target_filter(x)),
-            CompareList::GoldOrRight=> what.gold.iter().any(|x| self.table_target_filter(x)) || what.right.iter().any(|x| self.table_target_filter(x)),
-            CompareList::GoldOrLeftOrRight => what.gold.iter().any(|x| self.table_target_filter(x)) || what.left.iter().any(|x| self.table_target_filter(x)) || what.right.iter().any(|x| self.table_target_filter(x)),
-            _ => panic!("not possible")
+            CompareList::Gold => what.gold.iter().any(|x| self.table_target_filter(x)),
+            CompareList::Left => what.left.iter().any(|x| self.table_target_filter(x)),
+            CompareList::Right => what.right.iter().any(|x| self.table_target_filter(x)),
+            CompareList::GoldOrLeft => {
+                what.gold.iter().any(|x| self.table_target_filter(x))
+                    || what.left.iter().any(|x| self.table_target_filter(x))
+            }
+            CompareList::GoldOrRight => {
+                what.gold.iter().any(|x| self.table_target_filter(x))
+                    || what.right.iter().any(|x| self.table_target_filter(x))
+            }
+            CompareList::GoldOrLeftOrRight => {
+                what.gold.iter().any(|x| self.table_target_filter(x))
+                    || what.left.iter().any(|x| self.table_target_filter(x))
+                    || what.right.iter().any(|x| self.table_target_filter(x))
+            }
+            _ => panic!("not possible"),
         }
     }
-
 
     fn display_graph_filter_infos(&self, mode: &CompareList) -> Html {
         if let GlobalFilterMode::None = self.graph.filter_mode {
-            html!{}
+            html! {}
         } else {
-            html!{<span>
+            html! {<span>
                 {"Limited to : "}{match (self.graph.filter_mode,mode) {
                                                                           (GlobalFilterMode::A,CompareList::GoldVSLeft) => "gold",
                                                                           (GlobalFilterMode::A,CompareList::GoldVSRight) => "gold",
@@ -438,13 +505,23 @@ impl App {
     }
 
     fn display_graph_filter(&self) -> Html {
-        let mut domains = self.corpus.intent_mapping.val.values().collect::<Vec<&String>>();
+        let mut domains = self
+            .corpus
+            .intent_mapping
+            .val
+            .values()
+            .collect::<Vec<&String>>();
         domains.sort_unstable();
         domains.dedup();
-        let mut intents = self.corpus.intent_mapping.val.keys().collect::<Vec<&String>>();
+        let mut intents = self
+            .corpus
+            .intent_mapping
+            .val
+            .keys()
+            .collect::<Vec<&String>>();
         intents.sort_unstable();
         intents.dedup();
-        let select =  html! {
+        let select = html! {
             <select onchange=self.link.callback(|c| {Msg::UpdateGraphFilterMode(c)}) >
             { for GlobalFilterMode::iterator().map( |v| {
                                                             html!{<option value=GlobalFilterMode::as_str(v) selected= self.graph.filter_mode == *v  >{GlobalFilterMode::as_str(v)}</option>}
@@ -453,7 +530,7 @@ impl App {
 
         };
 
-        html!{<form>
+        html! {<form>
             {select}
             {if let GlobalFilterMode::None = self.graph.filter_mode {html!{}} else {html!{
                                                                                              <select onchange=self.link.callback(|c| {Msg::UpdateGraphFilterTarget(c)})>
@@ -468,23 +545,30 @@ impl App {
                                                                                              </select>}}}
             </form>
         }
-
     }
-
 }
 
-
-fn sort_function(criterion: (TableField,SortDirection), a: &Case,b: &Case) -> std::cmp::Ordering {
-    let (sort,direction) = criterion;
-    let c = if let SortDirection::Increasing = direction {a} else {b};
-    let d = if let SortDirection::Increasing =direction {b} else {a};
-    match sort{
+fn sort_function(criterion: (TableField, SortDirection), a: &Case, b: &Case) -> std::cmp::Ordering {
+    let (sort, direction) = criterion;
+    let c = if let SortDirection::Increasing = direction {
+        a
+    } else {
+        b
+    };
+    let d = if let SortDirection::Increasing = direction {
+        b
+    } else {
+        a
+    };
+    match sort {
         TableField::ID => c.reference.partial_cmp(&d.reference).unwrap(),
-        TableField::Text => unidecode::unidecode(&c.text).partial_cmp(&unidecode::unidecode(&d.text)).unwrap(),
+        TableField::Text => unidecode::unidecode(&c.text)
+            .partial_cmp(&unidecode::unidecode(&d.text))
+            .unwrap(),
         TableField::Count => c.count.partial_cmp(&d.count).unwrap(),
         TableField::Gold => c.gold.partial_cmp(&d.gold).unwrap(),
         TableField::Left => c.left.partial_cmp(&d.left).unwrap(),
-        TableField::Right => c.right.partial_cmp(&d.right).unwrap()
+        TableField::Right => c.right.partial_cmp(&d.right).unwrap(),
     }
 }
 
@@ -508,35 +592,37 @@ impl GraphDisplay {
     }
 
     fn display_scatter(&self, mode: CompareList, app: &App) -> Html {
-        let mut hm : HashMap<(String,String),usize> = HashMap::new();
+        let mut hm: HashMap<(String, String), usize> = HashMap::new();
         let mut current_cases = app.corpus.cases.to_vec();
-        let mut a_keys=HashSet::new();
-        let mut b_keys=HashSet::new();
+        let mut a_keys = HashSet::new();
+        let mut b_keys = HashSet::new();
 
         current_cases = match self.filter_mode {
             GlobalFilterMode::None => app.corpus.cases.to_vec(),
-            _ => current_cases.into_iter().filter(|x| app.graph_limit_filter(x, &mode)).collect::<Vec<Case>>(),
+            _ => current_cases
+                .into_iter()
+                .filter(|x| app.graph_limit_filter(x, &mode))
+                .collect::<Vec<Case>>(),
         };
 
         for i in 0..current_cases.len() {
-            let (a,b) =
-                match mode {
-                    CompareList::GoldVSLeft => (&current_cases[i].gold,&current_cases[i].left),
-                    CompareList::GoldVSRight => (&current_cases[i].gold,&current_cases[i].right),
-                    CompareList::LeftVSRight => (&current_cases[i].left,&current_cases[i].right),
-                    _ => panic!("not possible"),
-                };
+            let (a, b) = match mode {
+                CompareList::GoldVSLeft => (&current_cases[i].gold, &current_cases[i].left),
+                CompareList::GoldVSRight => (&current_cases[i].gold, &current_cases[i].right),
+                CompareList::LeftVSRight => (&current_cases[i].left, &current_cases[i].right),
+                _ => panic!("not possible"),
+            };
 
-            let aligned_annotations = annotation_align(a,b);
+            let aligned_annotations = annotation_align(a, b);
 
             for annot in aligned_annotations.into_iter() {
                 let a1 = annot.1.unwrap_or(Annotation::empty());
                 let first = a1.domain.clone();
                 let a2 = annot.2.unwrap_or(Annotation::empty());
                 let second = a2.domain.clone();
-                if first != second || a1.intent!=a2.intent {
-                    let count = hm.entry((first,second)).or_insert(0);
-                    *count +=current_cases[i].count;
+                if first != second || a1.intent != a2.intent {
+                    let count = hm.entry((first, second)).or_insert(0);
+                    *count += current_cases[i].count;
                 }
             }
 
@@ -551,13 +637,16 @@ impl GraphDisplay {
         from.sort();
         to.sort();
 
-        let from_size = if from.len() == 0 { 1 } else { 300 / from.len()};
-        let to_size = if to.len() == 0 { 1 } else { 300 / to.len()};
- 
-        let max = (1 as f32 + hm.values().fold(0 as usize, | max, x | if *x > max { *x } else {max} ) as f32).log2() as usize;
-        let color_step = if max == 0 {0} else {50 / max};
+        let from_size = if from.len() == 0 { 1 } else { 300 / from.len() };
+        let to_size = if to.len() == 0 { 1 } else { 300 / to.len() };
 
-        html!{
+        let max = (1 as f32
+            + hm.values()
+                .fold(0 as usize, |max, x| if *x > max { *x } else { max }) as f32)
+            .log2() as usize;
+        let color_step = if max == 0 { 0 } else { 50 / max };
+
+        html! {
             <>
             <center><h3>{"Error map"}</h3></center>
             <center><svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -568,7 +657,7 @@ impl GraphDisplay {
                                                               html!{<g><title>{title}</title>
                                                                   <rect x=(x*to_size) y=(y*from_size) rx=to_size/5 ry=from_size/5 height=from_size width=to_size style={format!("fill:{}", col )}>
                                                                       </rect></g>}
-                                                          })}}  ) 
+                                                          })}}  )
             }
 
             </svg></center>
@@ -576,49 +665,50 @@ impl GraphDisplay {
         }
     }
 
-
     fn display_pie(&self, mode: CompareList, app: &App) -> Html {
-
         let pi: f32 = 3.14159265358979;
         let radius: f32 = 70.;
-        let mut hm : HashMap<AnnotationComparison,usize> = HashMap::new();
+        let mut hm: HashMap<AnnotationComparison, usize> = HashMap::new();
         let mut current_cases = app.corpus.cases.to_vec();
 
         current_cases = match self.filter_mode {
             GlobalFilterMode::None => app.corpus.cases.to_vec(),
-            _ => current_cases.into_iter().filter(|x| app.graph_limit_filter(x, &mode)).collect::<Vec<Case>>(),
+            _ => current_cases
+                .into_iter()
+                .filter(|x| app.graph_limit_filter(x, &mode))
+                .collect::<Vec<Case>>(),
         };
 
         for i in 0..current_cases.len() {
-            let what =
-                match mode {
-                    CompareList::GoldVSLeft => &current_cases[i].gold_vs_left,
-                    CompareList::GoldVSRight => &current_cases[i].gold_vs_right,
-                    CompareList::LeftVSRight => &current_cases[i].left_vs_right,
-                    _ => panic!("not possible"),
-                };
+            let what = match mode {
+                CompareList::GoldVSLeft => &current_cases[i].gold_vs_left,
+                CompareList::GoldVSRight => &current_cases[i].gold_vs_right,
+                CompareList::LeftVSRight => &current_cases[i].left_vs_right,
+                _ => panic!("not possible"),
+            };
 
             let count = hm.entry(*what).or_insert(0);
-            *count +=current_cases[i].count;
+            *count += current_cases[i].count;
         }
 
         let sum = hm.values().fold(0, |acc, x| acc + x);
         let mut offset = 0.;
-        let mut pos = vec!();
-        let colors=["#e31a1c","#feb24c","#ffffcc","#41ab5d","#005a32"];
-        let mut color_index=0;
+        let mut pos = vec![];
+        let colors = ["#e31a1c", "#feb24c", "#ffffcc", "#41ab5d", "#005a32"];
+        let mut color_index = 0;
         for a in AnnotationComparison::iterator() {
             let length = *hm.get(a).unwrap_or(&0);
-            pos.push(((2.*pi*radius*length as f32) / (sum as f32)
-                      ,2.*pi*radius*(sum as f32 - length as f32) / (sum as f32)
-                      ,2.*pi*radius*(0.25 - offset as f32)
-                      , colors[color_index]
-                     ));
-            color_index +=1;
+            pos.push((
+                (2. * pi * radius * length as f32) / (sum as f32),
+                2. * pi * radius * (sum as f32 - length as f32) / (sum as f32),
+                2. * pi * radius * (0.25 - offset as f32),
+                colors[color_index],
+            ));
+            color_index += 1;
             offset += length as f32 / (sum as f32);
-        };
+        }
 
-        html!{<>
+        html! {<>
             <center><h3>{CompareList::as_str(&mode)}</h3></center>
                 <center><h4>{app.display_graph_filter_infos(&mode)}</h4></center>
                 <center>
@@ -651,45 +741,49 @@ impl GraphDisplay {
                 </>
         }
     }
-
 }
 
 impl TableDisplay {
-    fn display_header(&self, field:TableField) ->Html {
+    fn display_header(&self, field: TableField) -> Html {
         let character = SortDirection::as_str(&self.sort_criterion.1);
         let name = TableField::as_str(&field);
         if field == self.sort_criterion.0 {
-            html!{<button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateSort(field)}) >{name}{character}</button>}
+            html! {<button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateSort(field)}) >{name}{character}</button>}
         } else {
-            html!{
+            html! {
                 <button style="padding:0.3em; cursor: pointer" onclick=self.link_ref.callback(move |c| {Msg::UpdateSort(field)})>{name}</button>
             }
-
         }
     }
 
-    fn count_sentences(&self,what : &[Case]) -> String {
-        format!("{} sentences ({} distinct)",
-        what.iter().map(|c| {c.count}).sum::<usize>(),
-        what.len()
+    fn count_sentences(&self, what: &[Case]) -> String {
+        format!(
+            "{} sentences ({} distinct)",
+            what.iter().map(|c| { c.count }).sum::<usize>(),
+            what.len()
         )
     }
 
     fn filter_fn(&self, case: &Case) -> bool {
-        if let Some(f) = &self.filter { 
-            if case.text.contains(f) { true } 
-            else if case.gold.iter().any(|x| {x.intent.contains(f) || x.values.iter().any(|y| {y.0.contains(f) || y.1.contains(f)})}) {
+        if let Some(f) = &self.filter {
+            if case.text.contains(f) {
                 true
-            }
-            else if case.left.iter().any(|x| {x.intent.contains(f) || x.values.iter().any(|y| {y.0.contains(f) || y.1.contains(f)})}) {
+            } else if case.gold.iter().any(|x| {
+                x.intent.contains(f) || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
+            }) {
                 true
-            }
-            else if case.right.iter().any(|x| {x.intent.contains(f) || x.values.iter().any(|y| {y.0.contains(f) || y.1.contains(f)})}) {
+            } else if case.left.iter().any(|x| {
+                x.intent.contains(f) || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
+            }) {
                 true
+            } else if case.right.iter().any(|x| {
+                x.intent.contains(f) || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
+            }) {
+                true
+            } else {
+                false
             }
-            else {false}
-        }
-        else {
+        } else {
             true
         }
     }
@@ -698,10 +792,10 @@ impl TableDisplay {
         match &self.compare_mode {
             CompareList::GoldVSLeft | CompareList::GoldVSRight | CompareList::LeftVSRight => {
                 let d = match &self.compare_mode {
-                    CompareList::GoldVSLeft => &c.gold_vs_left, 
-                    CompareList::GoldVSRight => &c.gold_vs_right, 
+                    CompareList::GoldVSLeft => &c.gold_vs_left,
+                    CompareList::GoldVSRight => &c.gold_vs_right,
                     CompareList::LeftVSRight => &c.left_vs_right,
-                    _ => panic!("not possible")
+                    _ => panic!("not possible"),
                 };
 
                 match &self.compare_operator {
@@ -710,29 +804,29 @@ impl TableDisplay {
                     Operator::EQ => d == &self.compare_level,
                     Operator::NEQ => d != &self.compare_level,
                 }
-
-            },
+            }
 
             _ => app.table_limit_filter(c, &self.compare_mode), // Gold, Right, Left, GoldOrLeft...
-
         }
-
-
-
     }
 
     fn display(&self, app: &App) -> Html {
         let mut current_cases = app.corpus.cases.to_vec();
         // table filter
-        current_cases = current_cases.into_iter().filter(|x| self.filter_fn(x)).filter(|c| self.filter_comparison(c,app)).collect::<Vec<Case>>();
+        current_cases = current_cases
+            .into_iter()
+            .filter(|x| self.filter_fn(x))
+            .filter(|c| self.filter_comparison(c, app))
+            .collect::<Vec<Case>>();
 
+        current_cases.sort_by(move |a, b| sort_function(self.sort_criterion, a, b));
 
-        current_cases.sort_by(move |a,b| {sort_function(self.sort_criterion,  a, b)});
-
-        let current_case_page = if current_cases.len()>0 
-        {&current_cases[self.current_index..std::cmp::min(current_cases.len(),self.current_index+self.page_size)]
-        } else {&current_cases[..]};
-
+        let current_case_page = if current_cases.len() > 0 {
+            &current_cases[self.current_index
+                ..std::cmp::min(current_cases.len(), self.current_index + self.page_size)]
+        } else {
+            &current_cases[..]
+        };
 
         html! {
             <table id="table" style="border-collapse:collapse;">
@@ -762,18 +856,18 @@ impl TableDisplay {
     }
 
     fn display_filterbar(&self, cases: &[Case], app: &App) -> Html {
-        html!{
+        html! {
             <>
                 <tr style="background-color:lightgrey;"><th colspan="6"><span>{self.count_sentences(&cases)}</span></th></tr>
                 <tr style="background-color:lightgrey;">
                 <th colspan="6"><span>{"text filter : "}</span><input type="text"  oninput=self.link_ref.callback(|x: InputData| Msg::UpdateFilter(x.value))/>
                 <span>{ "comparison mode : "}</span>
                 <select onchange=self.link_ref.callback(|c| {Msg::UpdateCompare(c)})>
-                {if app.global.gold && app.global.left 
+                {if app.global.gold && app.global.left
                     {html!{<option value=CompareList::as_str(&CompareList::GoldVSLeft) selected = self.compare_mode == CompareList::GoldVSLeft  >{CompareList::as_str(&CompareList::GoldVSLeft)}</option>}}
                     else {html!{}}
                 }
-            {if app.global.gold && app.global.right 
+            {if app.global.gold && app.global.right
                 {html!{<option value=CompareList::as_str(&CompareList::GoldVSRight) selected =  self.compare_mode == CompareList::GoldVSRight > {CompareList::as_str(&CompareList::GoldVSRight)}</option>}}
                 else {html!{}}
             }
@@ -868,7 +962,7 @@ impl TableDisplay {
     }
 
     fn display_navbar(&self, cases: &[Case]) -> Html {
-        let nb_pages = (cases.len()+self.page_size-1) / self.page_size;
+        let nb_pages = (cases.len() + self.page_size - 1) / self.page_size;
         let mut previous_page_list = vec![];
         let mut next_page_list = vec![];
 
@@ -876,18 +970,37 @@ impl TableDisplay {
 
         let current_page = self.current_index / self.page_size + 1;
 
+        if current_page as isize - 100 > 0 {
+            previous_page_list.push(current_page - 100)
+        };
+        if current_page as isize - 10 > 0 {
+            previous_page_list.push(current_page - 10)
+        };
+        if current_page as isize - 5 > 0 {
+            previous_page_list.push(current_page - 5)
+        };
+        if current_page as isize - 2 > 0 {
+            previous_page_list.push(current_page - 2)
+        };
+        if current_page as isize - 1 > 0 {
+            previous_page_list.push(current_page - 1)
+        };
 
-        if current_page as isize -100 > 0 { previous_page_list.push(current_page-100) };
-        if current_page as isize -10 > 0 { previous_page_list.push(current_page-10) };
-        if current_page as isize -5 > 0 { previous_page_list.push(current_page-5) };
-        if current_page as isize -2 > 0 { previous_page_list.push(current_page-2) };
-        if current_page as isize -1 > 0 { previous_page_list.push(current_page-1) };
-
-        if current_page+1 <= nb_pages { next_page_list.push(current_page+1) };
-        if current_page+2 <= nb_pages { next_page_list.push(current_page+2) };
-        if current_page+5 <= nb_pages { next_page_list.push(current_page+5) };
-        if current_page+10 <= nb_pages { next_page_list.push(current_page+10) };
-        if current_page+100 <= nb_pages { next_page_list.push(current_page+100) };
+        if current_page + 1 <= nb_pages {
+            next_page_list.push(current_page + 1)
+        };
+        if current_page + 2 <= nb_pages {
+            next_page_list.push(current_page + 2)
+        };
+        if current_page + 5 <= nb_pages {
+            next_page_list.push(current_page + 5)
+        };
+        if current_page + 10 <= nb_pages {
+            next_page_list.push(current_page + 10)
+        };
+        if current_page + 100 <= nb_pages {
+            next_page_list.push(current_page + 100)
+        };
 
         html! {<>
             <tr style="background-color:lightgrey;"><th colspan="5">
@@ -914,7 +1027,6 @@ impl TableDisplay {
         }
     }
 
-
     fn display_case(&self, case: &Case, app: &App) -> Html {
         html! {
             <tr style="border-bottom: 1px solid grey;">
@@ -939,10 +1051,9 @@ impl TableDisplay {
         }
     }
 
-
     fn display_annotation(&self, annot: &Annotation) -> Html {
         let color = hash_it(annot) % 360;
-        let domain = &annot.domain; 
+        let domain = &annot.domain;
 
         html! {
             <table style={format!("border-collapse:separate; padding:0.2em; background-color:hsl({},35%,50%);",color)}>
@@ -965,9 +1076,8 @@ impl TableDisplay {
         }
     }
 }
-fn hash_it<T:Hash>(t:T) -> u64 {
+fn hash_it<T: Hash>(t: T) -> u64 {
     let mut s = std::collections::hash_map::DefaultHasher::new();
     t.hash(&mut s);
     s.finish()
 }
-
