@@ -14,6 +14,7 @@ common = { path="../common"}
 anyhow = ""
 serde = ""
 serde_derive = ""
+chrono = ""
 
 [profile.release]
 # less code to include into binary

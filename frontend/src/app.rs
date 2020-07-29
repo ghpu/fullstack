@@ -18,9 +18,11 @@ pub enum WsAction {
 pub struct App {
     link: ComponentLink<Self>,
     fetching: bool,
-    data: Option<u32>,
     ft: Option<FetchTask>,
     ws: Option<WebSocketTask>,
+    login: Option<String>,
+    channel: Option<String>,
+    data: Option<u32>,
 }
 
 pub enum Msg {
@@ -30,6 +32,8 @@ pub enum Msg {
     Ignore,
     WsAction(WsAction),
     WsReady(Result<WsResponse, Error>),
+    UpdateLogin(String),
+    UpdateChannel(String),
 }
 
 impl From<WsAction> for Msg {
@@ -58,6 +62,8 @@ impl Component for App {
             data: None,
             ft: None,
             ws: None,
+            login: None,
+            channel: None,
         }
     }
 
@@ -69,7 +75,9 @@ impl Component for App {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::NoOp => {}
+            Msg::NoOp => {},
+            Msg::UpdateLogin(login) => self.login = Some(login),
+            Msg::UpdateChannel(channel) => self.channel = Some(channel),
             Msg::WsAction(action) => match action {
                 WsAction::Connect => {
                     let callback = self.link.callback(|Json(data)| Msg::WsReady(data));
@@ -132,7 +140,10 @@ impl Component for App {
         html! {
             <>
                 <div>{ "Hello world!, " }{self.fetching}{ format!("{:?}", self.data) }</div>
-                <div><button disabled=self.ws.is_some()
+                <div>
+                <label>{"Login : "}<input type="text" disabled=self.ws.is_some() oninput=self.link.callback(|x: InputData| Msg::UpdateLogin(x.value))/></label>
+                <label>{"Channel : "}<input type="text" disabled=self.ws.is_some() oninput=self.link.callback(|x: InputData| Msg::UpdateChannel(x.value))/></label>
+                <button disabled=self.ws.is_some() || (self.login.is_none() || self.channel.is_none())
                 onclick=self.link.callback(|_| WsAction::Connect)>
                 { "Connect To WebSocket" }
             </button>
