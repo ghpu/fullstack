@@ -14,7 +14,8 @@ common = { path="../common"}
 anyhow = ""
 serde = ""
 serde_derive = ""
-chrono = ""
+chrono = {features=["serde","wasmbind"]}
+bincode = ""
 
 [profile.release]
 # less code to include into binary

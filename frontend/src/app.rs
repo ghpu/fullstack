@@ -5,14 +5,15 @@ use yew::prelude::*;
 use yew::services::console::ConsoleService;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::websocket::{WebSocketService, WebSocketStatus, WebSocketTask};
+use common::{Connection};
+use bincode::{serialize};
 
-type AsBinary = bool;
 
 pub enum WsAction {
     Connect,
-    SendData(AsBinary),
     Disconnect,
     Lost,
+    Join,
 }
 
 pub struct App {
@@ -75,34 +76,30 @@ impl Component for App {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::NoOp => {},
+            Msg::NoOp => {}
             Msg::UpdateLogin(login) => self.login = Some(login),
             Msg::UpdateChannel(channel) => self.channel = Some(channel),
             Msg::WsAction(action) => match action {
                 WsAction::Connect => {
                     let callback = self.link.callback(|Json(data)| Msg::WsReady(data));
                     let notification = self.link.callback(|status| match status {
-                        WebSocketStatus::Opened => Msg::Ignore,
+                        WebSocketStatus::Opened => Msg::WsAction(WsAction::Join),
                         WebSocketStatus::Closed | WebSocketStatus::Error => WsAction::Lost.into(),
                     });
                     let task =
                         WebSocketService::connect("ws://localhost:9001/", callback, notification)
                             .unwrap();
                     self.ws = Some(task);
-                }
-                WsAction::SendData(binary) => {
-                    let request = WsRequest { value: 321 };
-                    if binary {
-                        self.ws.as_mut().unwrap().send_binary(Json(&request));
-                    } else {
-                        self.ws.as_mut().unwrap().send(Json(&request));
-                    }
-                }
+                },
                 WsAction::Disconnect => {
                     self.ws.take();
                 }
                 WsAction::Lost => {
                     self.ws = None;
+                },
+                WsAction::Join => {
+                    let msg = bincode::serialize(&common::Message::Connection(common::Connection{time:chrono::Utc::now(), login:self.login.as_ref().unwrap().clone(), channel: self.channel.as_ref().unwrap().clone()})).unwrap();
+                    self.ws.as_mut().unwrap().send_binary(Ok(msg));
                 }
             },
             Msg::WsReady(response) => {
@@ -147,15 +144,7 @@ impl Component for App {
                 onclick=self.link.callback(|_| WsAction::Connect)>
                 { "Connect To WebSocket" }
             </button>
-                <button disabled=self.ws.is_none()
-                onclick=self.link.callback(|_| WsAction::SendData(false))>
-                { "Send To WebSocket" }
-            </button>
-                <button disabled=self.ws.is_none()
-                onclick=self.link.callback(|_| WsAction::SendData(true))>
-                { "Send To WebSocket [binary]" }
-            </button>
-                <button disabled=self.ws.is_none()
+                            <button disabled=self.ws.is_none()
                 onclick=self.link.callback(|_| WsAction::Disconnect)>
                 { "Close WebSocket connection" }
             </button>
