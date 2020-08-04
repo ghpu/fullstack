@@ -4,7 +4,7 @@ steps:
   args: ['build', '--tag=eu.gcr.io/$PROJECT_ID/fullstack', '.']
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', 'eu.gcr.io/$PROJECT_ID/fullstack']
-- name: 'gcr.io.google/com/cloudsdktool/cloud-sdk'
+- name: 'gcr.io/google/com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
   args: ['run', 'deploy', 'fullstack-case-analysis', '--image', 'eu.gcr.io/$PROJECT_ID/fullstack', '--region', 'europe-west1', '--platform', 'managed']
 
