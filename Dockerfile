@@ -30,6 +30,6 @@ RUN apt-get update && \
 
 EXPOSE 8080
 VOLUME /code
-WORKDIR /code
+WORKDIR /code/out
 COPY --from=builder /code/out /code/out
-CMD ["./out/server"]
+CMD ["./server"]
