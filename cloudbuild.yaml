@@ -1,7 +1,7 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
   id: 'rust-wasm'
-  args: ['build', '--tag=gcr.io/$PROJECT_ID/fullstack', '.']
+  args: ['build', '--tag=eu.gcr.io/$PROJECT_ID/fullstack', '.']
 
-images: ['gcr.io/$PROJECT_ID/fullstack']
+images: ['eu.gcr.io/$PROJECT_ID/fullstack']
 tags: ['cloud-builders-custom']
