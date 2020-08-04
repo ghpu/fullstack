@@ -2,7 +2,7 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   id: 'rust-wasm'
   args: ['build', '--tag=eu.gcr.io/$PROJECT_ID/fullstack', '.']
-timeout: 1200s
+timeout: 3600s
 
 images: ['eu.gcr.io/$PROJECT_ID/fullstack']
 tags: ['cloud-builders-custom']
