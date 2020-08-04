@@ -6,3 +6,7 @@ timeout: 3600s
 
 images: ['eu.gcr.io/$PROJECT_ID/fullstack']
 tags: ['cloud-builders-custom']
+
+options:
+  machineType: 'N1_HIGHCPU_8'
+
