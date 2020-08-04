@@ -769,15 +769,15 @@ impl TableDisplay {
             if case.text.contains(f) {
                 true
             } else if case.gold.iter().any(|x| {
-                x.intent.contains(f) || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
+                x.domain.contains(f) || x.intent.contains(f) || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
             }) {
                 true
             } else if case.left.iter().any(|x| {
-                x.intent.contains(f) || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
+                x.domain.contains(f) || x.intent.contains(f) || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
             }) {
                 true
             } else if case.right.iter().any(|x| {
-                x.intent.contains(f) || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
+                x.domain.contains(f) || x.intent.contains(f) || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
             }) {
                 true
             } else {
