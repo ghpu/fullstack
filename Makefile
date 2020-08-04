@@ -12,10 +12,12 @@ all: backend common frontend
 	wasm-pack build --target web --out-name app && \
 	rollup ./main.js --format iife --file=./pkg/bundle.js && \
 	cp index.html data.json Serif/* ../out && \
-	cp pkg/app_bg.wasm pkg/bundle.js ../out/pkg && \
-	popd  && \
+	cp pkg/app_bg.wasm pkg/bundle.js ../out/pkg
+
+run: all
 	cd out && \
 	./server
+
 
 .PHONY: clean
 clean:

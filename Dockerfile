@@ -1,9 +1,9 @@
-FROM rust
+FROM rust AS builder
 LABEL version="v1" \
       maintainer="ghislain.putois@orange.com" \
-      name="Case analyzer" \
+      name="Case analyzer Builder" \
       licence="MIT" \
-      info="NLP Evaluation suite"
+      info="NLP Evaluation suite builder"
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -19,3 +19,18 @@ VOLUME /code
 WORKDIR /code
 ENTRYPOINT ["make"]
 
+FROM debian
+LABEL version="v1" \
+      maintainer="ghislain.putois@orange.com" \
+      name="Case analyzer" \
+      licence="MIT" \
+      info="NLP Evaluation suite"
+
+RUN apt-get update && \
+    apt-get upgrade -y
+
+EXPOSE 8080
+VOLUME /code
+WORKDIR /code
+COPY --from=builder /code/out /code/out
+CMD ["./out/server"]
