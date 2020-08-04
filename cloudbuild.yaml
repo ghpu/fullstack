@@ -1,7 +1,13 @@
 steps:
-- name: 'gcr.io/cloud-builders/docker'
+- name: 'eu.gcr.io/cloud-builders/docker'
   id: 'rust-wasm'
   args: ['build', '--tag=eu.gcr.io/$PROJECT_ID/fullstack', '.']
+- name: 'eu.gcr.io/cloud-builders/docker'
+  args: ['push', 'eu.gcr.io/$PROJECT_ID/fullstack']
+- name: 'eu.gcr.io.google/com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args: ['run', 'deploy', 'fullstack-case-analysis', '--image', 'eu.gcr.io/$PROJECT_ID/fullstack', '--region', 'europe-west1', '--platform', 'managed']
+
 timeout: 3600s
 
 images: ['eu.gcr.io/$PROJECT_ID/fullstack']
