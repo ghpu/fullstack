@@ -112,7 +112,7 @@ pub fn annotation_align(
                         (min_index, min)
                     }
                 }); // find best match for x in largest, and also returns distance
-        if distance >= 1000 {
+        if distance > 1000 {
             if a_is_smallest {
                 result.push((100, Some(x.clone()), None));
             } else {
