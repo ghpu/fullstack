@@ -8,7 +8,6 @@ use std::hash::{Hash, Hasher};
 use std::slice::Iter;
 use std::str::FromStr;
 use std::time::Duration;
-use unidecode;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
@@ -168,7 +167,7 @@ impl Component for App {
                 filter: None,
                 debounce_handle: TimeoutService::spawn(
                     Duration::from_secs(1),
-                    link.clone().callback(|_| Msg::NoOp),
+                    link.callback(|_| Msg::NoOp),
                 ),
                 compare_mode: CompareList::GoldVSLeft,
                 compare_operator: Operator::LTE,
@@ -238,7 +237,7 @@ impl Component for App {
                 let data: Json<Result<Corpus, Error>> = Ok(s).into();
                 let Json(dump) = data;
                 self.fetching = true;
-                self.link.callback(|x| Msg::FetchReady(x)).emit(dump);
+                self.link.callback(Msg::FetchReady).emit(dump);
             }
             Msg::File(file) => {
                 let task = {
@@ -299,13 +298,13 @@ impl Component for App {
             */
             Msg::FetchReady(response) => {
                 self.fetching = false;
-                self.corpus = response.unwrap_or(Corpus::empty()).clone();
+                self.corpus = response.unwrap_or(Corpus::empty());
                 let filter_target = GlobalFilterTarget::Domain(
                     self.corpus
                         .intent_mapping
                         .val
                         .values()
-                        .nth(0)
+                        .next()
                         .unwrap()
                         .to_string(),
                 );
@@ -605,11 +604,11 @@ impl GraphDisplay {
                 .collect::<Vec<Case>>(),
         };
 
-        for i in 0..current_cases.len() {
+        for cc in &current_cases {
             let (a, b) = match mode {
-                CompareList::GoldVSLeft => (&current_cases[i].gold, &current_cases[i].left),
-                CompareList::GoldVSRight => (&current_cases[i].gold, &current_cases[i].right),
-                CompareList::LeftVSRight => (&current_cases[i].left, &current_cases[i].right),
+                CompareList::GoldVSLeft => (&cc.gold, &cc.left),
+                CompareList::GoldVSRight => (&cc.gold, &cc.right),
+                CompareList::LeftVSRight => (&cc.left, &cc.right),
                 _ => panic!("not possible"),
             };
 
@@ -622,7 +621,7 @@ impl GraphDisplay {
                 let second = a2.domain.clone();
                 if first != second || a1.intent != a2.intent {
                     let count = hm.entry((first, second)).or_insert(0);
-                    *count += current_cases[i].count;
+                    *count += cc.count;
                 }
             }
 
@@ -637,10 +636,10 @@ impl GraphDisplay {
         from.sort();
         to.sort();
 
-        let from_size = if from.len() == 0 { 1 } else { 300 / from.len() };
-        let to_size = if to.len() == 0 { 1 } else { 300 / to.len() };
+        let from_size = if from.is_empty() { 1 } else { 300 / from.len() };
+        let to_size = if to.is_empty() { 1 } else { 300 / to.len() };
 
-        let max = (1 as f32
+        let max = (1_f32
             + hm.values()
                 .fold(0 as usize, |max, x| if *x > max { *x } else { max }) as f32)
             .log2() as usize;
@@ -666,7 +665,7 @@ impl GraphDisplay {
     }
 
     fn display_pie(&self, mode: CompareList, app: &App) -> Html {
-        let pi: f32 = 3.14159265358979;
+        let pi = std::f32::consts::PI;
         let radius: f32 = 70.;
         let mut hm: HashMap<AnnotationComparison, usize> = HashMap::new();
         let mut current_cases = app.corpus.cases.to_vec();
@@ -679,19 +678,19 @@ impl GraphDisplay {
                 .collect::<Vec<Case>>(),
         };
 
-        for i in 0..current_cases.len() {
+        for cc in &current_cases {
             let what = match mode {
-                CompareList::GoldVSLeft => &current_cases[i].gold_vs_left,
-                CompareList::GoldVSRight => &current_cases[i].gold_vs_right,
-                CompareList::LeftVSRight => &current_cases[i].left_vs_right,
+                CompareList::GoldVSLeft => &cc.gold_vs_left,
+                CompareList::GoldVSRight => &cc.gold_vs_right,
+                CompareList::LeftVSRight => &cc.left_vs_right,
                 _ => panic!("not possible"),
             };
 
             let count = hm.entry(*what).or_insert(0);
-            *count += current_cases[i].count;
+            *count += cc.count;
         }
 
-        let sum = hm.values().fold(0, |acc, x| acc + x);
+        let sum: usize = hm.values().sum();
         let mut offset = 0.;
         let mut pos = vec![];
         let colors = ["#e31a1c", "#feb24c", "#ffffcc", "#41ab5d", "#005a32"];
@@ -769,19 +768,23 @@ impl TableDisplay {
             if case.text.contains(f) {
                 true
             } else if case.gold.iter().any(|x| {
-                x.domain.contains(f) || x.intent.contains(f) || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
+                x.domain.contains(f)
+                    || x.intent.contains(f)
+                    || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
             }) {
                 true
             } else if case.left.iter().any(|x| {
-                x.domain.contains(f) || x.intent.contains(f) || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
-            }) {
-                true
-            } else if case.right.iter().any(|x| {
-                x.domain.contains(f) || x.intent.contains(f) || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
+                x.domain.contains(f)
+                    || x.intent.contains(f)
+                    || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
             }) {
                 true
             } else {
-                false
+                case.right.iter().any(|x| {
+                    x.domain.contains(f)
+                        || x.intent.contains(f)
+                        || x.values.iter().any(|y| y.0.contains(f) || y.1.contains(f))
+                })
             }
         } else {
             true
@@ -821,7 +824,7 @@ impl TableDisplay {
 
         current_cases.sort_by(move |a, b| sort_function(self.sort_criterion, a, b));
 
-        let current_case_page = if current_cases.len() > 0 {
+        let current_case_page = if !current_cases.is_empty() {
             &current_cases[self.current_index
                 ..std::cmp::min(current_cases.len(), self.current_index + self.page_size)]
         } else {
@@ -986,7 +989,7 @@ impl TableDisplay {
             previous_page_list.push(current_page - 1)
         };
 
-        if current_page + 1 <= nb_pages {
+        if current_page < nb_pages {
             next_page_list.push(current_page + 1)
         };
         if current_page + 2 <= nb_pages {
@@ -1043,7 +1046,7 @@ impl TableDisplay {
         }
     }
 
-    fn display_annotations(&self, annots: &Vec<Annotation>) -> Html {
+    fn display_annotations(&self, annots: &[Annotation]) -> Html {
         html! {
             <table style="border-collapse:collapse">
             {for annots.iter().map(|annot| html! {<tr><td> {self.display_annotation(&annot)}</td></tr> })}

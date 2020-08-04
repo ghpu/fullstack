@@ -69,7 +69,7 @@ fn annotation_dist(a: &Annotation, b: &Annotation) -> u32 {
     if a == b {
         return 0;
     };
-    if a.intent != a.intent {
+    if a.intent != b.intent {
         return 1000;
     };
     let aligned_values = kv_align(&a.values, &b.values);
@@ -88,19 +88,18 @@ fn kv_dist(a: &(String, String), b: &(String, String)) -> u32 {
 }
 
 pub fn annotation_align(
-    a: &Vec<Annotation>,
-    b: &Vec<Annotation>,
+    a: &[Annotation],
+    b: &[Annotation],
 ) -> Vec<(u32, Option<Annotation>, Option<Annotation>)> {
     let (smallest, mut largest) = if a.len() <= b.len() {
-        (a, b.clone())
+        (a, b.to_owned())
     } else {
-        (b, a.clone())
+        (b, a.to_owned())
     };
     let a_is_smallest = a.len() <= b.len();
     let mut result: Vec<(u32, Option<Annotation>, Option<Annotation>)> = vec![];
 
-    for i in 0..smallest.len() {
-        let x = &smallest[i];
+    for x in smallest {
         let (best_index, distance) =
             largest
                 .iter()
@@ -129,8 +128,7 @@ pub fn annotation_align(
         }
     }
     // Add remainders from largest
-    for i in 0..largest.len() {
-        let x = &largest[i];
+    for x in &largest {
         if a_is_smallest {
             result.push((100, None, Some(x.clone())));
         } else {
@@ -141,19 +139,18 @@ pub fn annotation_align(
 }
 
 pub fn kv_align(
-    a: &Vec<(String, String)>,
-    b: &Vec<(String, String)>,
+    a: &[(String, String)],
+    b: &[(String, String)],
 ) -> Vec<(u32, Option<(String, String)>, Option<(String, String)>)> {
     let (smallest, mut largest) = if a.len() <= b.len() {
-        (a, b.clone())
+        (a, b.to_owned())
     } else {
-        (b, a.clone())
+        (b, a.to_owned())
     };
     let a_is_smallest = a.len() <= b.len();
     let mut result: Vec<(u32, Option<(String, String)>, Option<(String, String)>)> = vec![];
 
-    for i in 0..smallest.len() {
-        let x = &smallest[i];
+    for x in smallest {
         let (best_index, distance) =
             largest
                 .iter()
@@ -182,8 +179,7 @@ pub fn kv_align(
         }
     }
     // Add remainders from largest
-    for i in 0..largest.len() {
-        let x = &largest[i];
+    for x in &largest {
         if a_is_smallest {
             result.push((100, None, Some(x.clone())));
         } else {
@@ -198,15 +194,15 @@ pub enum CompareMode {
     Any,
 }
 
-pub fn compare(a: &Vec<Annotation>, b: &Vec<Annotation>) -> AnnotationComparison {
+pub fn compare(a: &[Annotation], b: &[Annotation]) -> AnnotationComparison {
     let aligned_annotations = annotation_align(a, b);
     let mut result = vec![];
 
-    for (d, A, B) in aligned_annotations.into_iter() {
-        match (A, B) {
+    for (d, a, b) in aligned_annotations.into_iter() {
+        match (a, b) {
             (None, None) => panic!("not possible"),
-            (Some(a), None) => result.push(AnnotationComparison::Different),
-            (None, Some(b)) => result.push(AnnotationComparison::Different),
+            (Some(_a), None) => result.push(AnnotationComparison::Different),
+            (None, Some(_b)) => result.push(AnnotationComparison::Different),
             (Some(a), Some(b)) => {
                 if a.intent != b.intent {
                     if a.domain != b.domain {
@@ -271,7 +267,7 @@ macro_rules! enum_str {
             fn as_str(&self) -> &str {
                 match self {
                     $(
-                        &$name::$key => $value
+                        $name::$key => $value
                      ),*
                 }
             }
