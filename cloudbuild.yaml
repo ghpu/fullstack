@@ -1,0 +1,7 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'rust-wasm'
+  args: ['build', '--tag=gcr.io/$PROJECT_ID/rust-wasm', '.']
+
+  images: ['gcr.io/$PROJECT_ID/rust-wasm']
+  tags: ['cloud-builders-community']
