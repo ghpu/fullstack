@@ -7,7 +7,8 @@ LABEL version="v1" \
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y rollup curl && \
+    apt-get install -y npm && \
+    npm install -g rollup && \
     curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh 
 
 COPY Makefile /code/Makefile
@@ -15,9 +16,7 @@ COPY common /code/common
 COPY frontend /code/frontend
 COPY backend /code/backend
 
-VOLUME /code
-WORKDIR /code
-ENTRYPOINT ["make"]
+RUN cd /code && make
 
 FROM debian
 LABEL version="v1" \

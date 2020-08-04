@@ -10,7 +10,7 @@ all: backend common frontend
 	popd && \
 	pushd frontend && \
 	wasm-pack build --target web --out-name app && \
-	rollup ./main.js --format iife --file=./pkg/bundle.js && \
+	rollup ./main.js --output.format iife --file=./pkg/bundle.js && \
 	cp index.html data.json Serif/* ../out && \
 	cp pkg/app_bg.wasm pkg/bundle.js ../out/pkg
 
