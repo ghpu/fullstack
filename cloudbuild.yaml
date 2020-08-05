@@ -6,7 +6,7 @@ steps:
   args: ['push', 'eu.gcr.io/$PROJECT_ID/fullstack']
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
-  args: ['run', 'deploy', 'fullstack-case-analysis', '--image', 'eu.gcr.io/$PROJECT_ID/fullstack', '--region', 'europe-west1', '--platform', 'managed']
+  args: ['run', 'deploy', 'fullstack-case-analysis', '--image', 'eu.gcr.io/$PROJECT_ID/fullstack', '--region', 'europe-west1', '--platform', 'managed' ,'--allow-unauthenticated']
 
 timeout: 3600s
 
