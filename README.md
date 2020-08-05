@@ -3,7 +3,7 @@ Fullstack
 
 Actix-web + Yew for developping a fullstack Rust web application on Linux.
 
-Dependnecies
+Dependencies
 ==
 
 wasm-pack : https://rustwasm.github.io/wasm-pack/installer/
