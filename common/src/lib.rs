@@ -96,8 +96,16 @@ pub fn annotation_align(
     } else {
         (b, a.to_owned())
     };
+
     let a_is_smallest = a.len() <= b.len();
     let mut result: Vec<(u32, Option<Annotation>, Option<Annotation>)> = vec![];
+
+    // Special case : only one annotation on each side
+    if a.len() == 1 && b.len() == 1 {
+        result.push((annotation_dist(&a[0],&b[0]),  Some(a[0].clone()),Some(b[0].clone())));
+        return result;    
+    }
+
 
     for x in smallest {
         let (best_index, distance) =
@@ -112,7 +120,7 @@ pub fn annotation_align(
                         (min_index, min)
                     }
                 }); // find best match for x in largest, and also returns distance
-        if distance > 1000 {
+        if distance >= 1000 {
             if a_is_smallest {
                 result.push((100, Some(x.clone()), None));
             } else {
